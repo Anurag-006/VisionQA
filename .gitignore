@@ -1,0 +1,61 @@
+# --- AI & Machine Learning ---
+# These are large binary files.
+# It's better to track these via Git LFS or download them at runtime.
+*.tflite
+*.onnx
+*.pb
+*.pt
+*.pth
+*.mlmodel
+*.bin
+
+# --- Android / Kotlin Specific ---
+build/
+bin/
+gen/
+out/
+.gradle/
+.kotlin/
+Captures/
+
+# --- Android Studio / IntelliJ ---
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches
+.idea/navEditor.xml
+*.iml
+*.iws
+*.ipr
+.navigation/
+
+# --- Local Configuration (SENSITIVE) ---
+# Contains your local SDK path and sensitive API keys
+local.properties
+.bundle/
+secrets.xml
+signing.properties
+
+# --- Keystore & Signing ---
+# NEVER share your production keys
+*.jks
+*.keystore
+*.pk8
+*.p12
+
+# --- Dependency Management ---
+# If you use the NDK
+.externalNativeBuild/
+.cxx/
+
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
+*.swp
+
+# --- Log Files ---
+*.log
+/local.properties

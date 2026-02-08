@@ -65,8 +65,10 @@ dependencies {
 
     // TensorFlow Lite — MINIMAL, NO LiteRT
     implementation("org.tensorflow:tensorflow-lite:2.17.0")
-
-
+    implementation("com.google.mlkit:image-labeling:17.0.8")
+    implementation("com.google.mlkit:text-recognition:16.0.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     // Tests
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

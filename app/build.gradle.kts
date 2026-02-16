@@ -3,12 +3,16 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-android {
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+    }
+}
+
+
+    android {
     namespace = "com.anurag.visionqa"
     compileSdk = 36
-    androidResources {
-        noCompress += "tflite"
-    }
 
     defaultConfig {
         applicationId = "com.anurag.visionqa"
@@ -17,7 +21,7 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Remove ndk and externalNativeBuild sections completely
     }
 
     buildTypes {
@@ -27,6 +31,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -34,19 +39,22 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-
     buildFeatures {
         compose = true
+    }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
     }
 }
 
 dependencies {
-
     // Core + Compose
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
-
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -63,17 +71,17 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:1.3.4")
     implementation("androidx.camera:camera-view:1.3.4")
 
-    // TensorFlow Lite — MINIMAL, NO LiteRT
-    implementation("org.tensorflow:tensorflow-lite:2.17.0")
-    implementation("com.google.mlkit:image-labeling:17.0.8")
-    implementation("com.google.mlkit:text-recognition:16.0.0")
+    // ONNX Runtime for Android
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
+
+    // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+
+    // OkHttp for downloads
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
     // Tests
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
 }
-

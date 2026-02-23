@@ -159,8 +159,19 @@ class RealTokenizer(private val context: Context, tokenizerPath: String? = null)
         // REMOVED .trim() from here so streamed tokens keep their spaces!
     }
 
-    fun formatPrompt(question: String): String {
-        return "\n\nQuestion: $question\n\nAnswer:"
+    // Replace your current formatPrompt with this:
+    fun formatPrompt(question: String, systemPrompt: String? = null, isFollowUp: Boolean = false): String {
+        val builder = StringBuilder()
+
+        // Only inject the persona on the very first turn!
+        if (!isFollowUp && !systemPrompt.isNullOrBlank()) {
+            builder.append("Instructions: $systemPrompt\n\n")
+        }
+
+        builder.append("Question: $question\n\nAnswer:")
+
+        // The model expects newlines before starting
+        return "\n\n$builder"
     }
 
     fun getVocabSize(): Int = vocab.size

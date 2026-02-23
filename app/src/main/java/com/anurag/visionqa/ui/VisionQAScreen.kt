@@ -1,9 +1,11 @@
 package com.anurag.visionqa.ui
 
+import android.Manifest
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
-import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
@@ -14,7 +16,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.anurag.visionqa.ai.MoondreamVLM
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -101,13 +107,16 @@ fun ShimmerBubble() {
         modifier = Modifier
             .fillMaxWidth(0.6f)
             .height(50.dp)
-            .clip(RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp))
-            .background(brush)
+            .background(brush, RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp))
     )
 }
 
 @Composable
-fun ChatBubble(message: ChatMessage, loadingPhase: String) {
+fun ChatBubble(
+    message: ChatMessage,
+    loadingPhase: String,
+    onSpeakClick: (String) -> Unit
+) {
     val alignment = if (message.isUser) Alignment.End else Alignment.Start
     val bubbleColor = if (message.isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
     val textColor = if (message.isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
@@ -138,7 +147,6 @@ fun ChatBubble(message: ChatMessage, loadingPhase: String) {
                 shadowElevation = 1.dp
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
-                    // Display image inside bubble if it exists
                     message.image?.let { bmp ->
                         Image(
                             bitmap = bmp.asImageBitmap(),
@@ -157,6 +165,21 @@ fun ChatBubble(message: ChatMessage, loadingPhase: String) {
                             color = textColor,
                             style = MaterialTheme.typography.bodyLarge
                         )
+
+                        // Speak Button for AI messages
+                        if (!message.isUser) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            IconButton(
+                                onClick = { onSpeakClick(message.text) },
+                                modifier = Modifier.size(24.dp).align(Alignment.End)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.VolumeUp,
+                                    contentDescription = "Read Aloud",
+                                    tint = textColor.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -164,44 +187,52 @@ fun ChatBubble(message: ChatMessage, loadingPhase: String) {
     }
 }
 
-// --- MAIN SCREEN ---
 @Composable
 fun VisionQAScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val vlm = remember { MoondreamVLM(context) }
+    val speechManager = remember { SpeechManager(context) }
 
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var questionText by remember { mutableStateOf("") }
 
-    // State management
     var messages by remember { mutableStateOf(listOf<ChatMessage>()) }
     var isProcessing by remember { mutableStateOf(false) }
     var isInitializing by remember { mutableStateOf(true) }
+    var isListening by remember { mutableStateOf(false) }
+
     var downloadProgress by remember { mutableStateOf("") }
     var inferenceJob by remember { mutableStateOf<Job?>(null) }
     var loadingPhase by remember { mutableStateOf("Initializing...") }
 
     val listState = rememberLazyListState()
 
-    // Auto-scroll to bottom when messages update
+    // Permission Launcher for Microphone
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            isListening = true
+            scope.launch {
+                speechManager.startListening().collect { text ->
+                    questionText = text
+                }
+                isListening = false // Reset when done
+            }
+        }
+    }
+
     LaunchedEffect(messages.size, messages.lastOrNull()?.text?.length) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
     }
 
-    // Phase cycler for the 3-minute wait
     if (isProcessing) {
         LaunchedEffect(Unit) {
-            val phases = listOf(
-                "Extracting visual features...",
-                "Loading semantic memory...",
-                "Cross-referencing pixels...",
-                "Analyzing prompt...",
-                "Formulating response..."
-            )
+            val phases = listOf("Extracting visual features...", "Loading semantic memory...", "Analyzing prompt...", "Formulating response...")
             var i = 0
             while (true) {
                 loadingPhase = phases[i % phases.size]
@@ -211,16 +242,11 @@ fun VisionQAScreen() {
         }
     }
 
-    // Initialization Effect
     LaunchedEffect(Unit) {
         messages = listOf(ChatMessage(text = "🚀 Initializing Moondream2...\nChecking models (~1.6GB total)...", isUser = false))
-
         scope.launch {
             try {
-                val success = vlm.initialize { msg, prog ->
-                    downloadProgress = "$msg ($prog%)"
-                }
-
+                val success = vlm.initialize { msg, prog -> downloadProgress = "$msg ($prog%)" }
                 messages = if (success) {
                     listOf(ChatMessage(text = "✅ Moondream is ready!\n📸 Capture an image to begin.", isUser = false))
                 } else {
@@ -236,8 +262,6 @@ fun VisionQAScreen() {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-
-        // TOP SECTION: Camera or Captured Image Preview
         Box(modifier = Modifier.weight(0.35f).fillMaxWidth()) {
             if (capturedBitmap != null) {
                 Image(
@@ -246,12 +270,7 @@ fun VisionQAScreen() {
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
-                // Overlay to show it's frozen
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.3f))
-                )
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
             } else {
                 CameraPreview(
                     modifier = Modifier.fillMaxSize(),
@@ -260,7 +279,6 @@ fun VisionQAScreen() {
             }
         }
 
-        // Download Progress Indicator
         if (downloadProgress.isNotEmpty()) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
             Text(
@@ -270,47 +288,64 @@ fun VisionQAScreen() {
             )
         }
 
-        // MIDDLE SECTION: Chat History
         LazyColumn(
             state = listState,
-            modifier = Modifier
-                .weight(0.65f)
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
+            modifier = Modifier.weight(0.65f).fillMaxWidth().padding(horizontal = 8.dp),
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
             items(messages) { msg ->
-                ChatBubble(message = msg, loadingPhase = loadingPhase)
+                ChatBubble(
+                    message = msg,
+                    loadingPhase = loadingPhase,
+                    onSpeakClick = { text -> speechManager.speak(text) }
+                )
             }
         }
 
-        // BOTTOM SECTION: Input & Controls
-        Surface(
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 4.dp,
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 4.dp, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(12.dp)) {
 
-                OutlinedTextField(
-                    value = questionText,
-                    onValueChange = { questionText = it },
-                    label = { Text("Ask about the image...") },
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isProcessing && !isInitializing,
-                    maxLines = 3,
-                    shape = RoundedCornerShape(16.dp)
-                )
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = questionText,
+                        onValueChange = { questionText = it },
+                        label = { Text("Ask about the image...") },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isProcessing && !isInitializing,
+                        maxLines = 3,
+                        shape = RoundedCornerShape(16.dp),
+                        trailingIcon = {
+                            // MICROPHONE BUTTON
+                            IconButton(
+                                onClick = {
+                                    if (isListening) {
+                                        isListening = false // Stop visually
+                                        // The flow will complete naturally
+                                    } else {
+                                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = if (isListening) Icons.Default.Stop else Icons.Default.Mic,
+                                    contentDescription = "Voice Input",
+                                    tint = if (isListening) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Dynamic Button Row based on state
                 if (isProcessing) {
                     Button(
                         onClick = {
                             inferenceJob?.cancel()
                             isProcessing = false
-                            // Update the loading bubble to show it was cancelled
                             messages = messages.map {
                                 if (it.isLoading) it.copy(isLoading = false, text = "⚠️ Generation stopped by user.") else it
                             }
@@ -321,18 +356,15 @@ fun VisionQAScreen() {
                         Text("Stop Generation")
                     }
                 } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Capture Button
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             modifier = Modifier.weight(1f),
                             enabled = !isInitializing,
                             onClick = {
                                 if (capturedBitmap != null) {
-                                    // If already captured, clear it to retake
                                     capturedBitmap = null
+                                    vlm.resetChat()
+                                    messages = emptyList()
                                 } else {
                                     val capture = imageCapture ?: return@Button
                                     capture.takePicture(
@@ -353,10 +385,9 @@ fun VisionQAScreen() {
                                 }
                             }
                         ) {
-                            Text(if (capturedBitmap != null) "Retake" else "Capture")
+                            Text(if (capturedBitmap != null) "Retake Image" else "Capture")
                         }
 
-                        // Send Button
                         Button(
                             modifier = Modifier.weight(1f),
                             enabled = capturedBitmap != null && questionText.isNotBlank(),
@@ -364,34 +395,26 @@ fun VisionQAScreen() {
                                 val bitmap = capturedBitmap!!
                                 val question = questionText.trim()
 
-                                // Clean up input UI immediately so camera goes live again
-                                capturedBitmap = null
                                 questionText = ""
                                 isProcessing = true
 
-                                // 1. Add User Message with Image
-                                messages = messages + ChatMessage(text = question, isUser = true, image = bitmap)
+                                val isFirstQuestion = messages.none { it.isUser }
+                                messages = messages + ChatMessage(text = question, isUser = true, image = if (isFirstQuestion) bitmap else null)
 
-                                // 2. Add AI Loading Message
                                 val aiMsgId = UUID.randomUUID().toString()
                                 messages = messages + ChatMessage(id = aiMsgId, text = "", isUser = false, isLoading = true)
 
-                                // 3. Launch AI Job
                                 inferenceJob = scope.launch {
                                     try {
-                                        val answer = vlm.chat(bitmap, question, emptyList()) { token ->
-                                            // Stream token to the specific AI bubble
+                                        val answer = vlm.chat(bitmap, question, null, emptyList()) { token ->
                                             messages = messages.map {
                                                 if (it.id == aiMsgId) it.copy(isLoading = false, text = it.text + token) else it
                                             }
                                         }
-
-                                        // Final catch in case stream callback failed
                                         messages = messages.map {
                                             if (it.id == aiMsgId && it.text.isEmpty()) it.copy(isLoading = false, text = answer) else it
                                         }
                                     } catch (e: CancellationException) {
-                                        // Handled by the cancel button logic above
                                     } catch (e: Exception) {
                                         messages = messages.map {
                                             if (it.id == aiMsgId) it.copy(isLoading = false, text = "❌ Error: ${e.message}") else it
@@ -410,5 +433,10 @@ fun VisionQAScreen() {
         }
     }
 
-    DisposableEffect(Unit) { onDispose { vlm.cleanup() } }
+    DisposableEffect(Unit) {
+        onDispose {
+            vlm.cleanup()
+            speechManager.cleanup() // Cleanup speech resources
+        }
+    }
 }

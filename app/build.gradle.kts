@@ -84,4 +84,8 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    implementation("com.google.mlkit:text-recognition:16.0.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.6")
+    implementation("androidx.compose.material:material-icons-extended")
 }

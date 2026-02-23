@@ -6,9 +6,11 @@ interface VLMInterface {
     suspend fun initialize(): Boolean
     fun isReady(): Boolean
 
+    // UPDATE THIS FUNCTION SIGNATURE
     suspend fun chat(
         image: Bitmap,
         question: String,
+        systemPrompt: String? = null, // <-- ADD THIS LINE
         conversationHistory: List<Pair<String, String>> = emptyList(),
         onTokenGenerated: ((String) -> Unit)? = null
     ): String

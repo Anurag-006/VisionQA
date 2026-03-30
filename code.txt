@@ -1,0 +1,2771 @@
+================================================================================
+PROJECT STRUCTURE: VisionQA
+================================================================================
+├── .gitignore
+├── .kotlin
+│   └── sessions
+├── app
+│   ├── .gitignore
+│   ├── build.gradle.kts
+│   ├── proguard-rules.pro
+│   ├── release
+│   │   ├── app-release.apk
+│   │   ├── baselineProfiles
+│   │   │   ├── 0
+│   │   │   │   └── app-release.dm
+│   │   │   └── 1
+│   │   │       └── app-release.dm
+│   │   └── output-metadata.json
+│   └── src
+│       ├── androidTest
+│       │   └── java
+│       │       └── com
+│       │           └── anurag
+│       │               └── visionqa
+│       │                   └── ExampleInstrumentedTest.kt
+│       ├── main
+│       │   ├── AndroidManifest.xml
+│       │   ├── assets
+│       │   │   ├── model.tflite
+│       │   │   └── tokenizer.json
+│       │   ├── java
+│       │   │   └── com
+│       │   │       └── anurag
+│       │   │           └── visionqa
+│       │   │               ├── ai
+│       │   │               │   ├── FakeAI.kt
+│       │   │               │   ├── MoondreamDownloader.kt
+│       │   │               │   ├── MoondreamVLM.kt
+│       │   │               │   ├── OcrHelper.kt
+│       │   │               │   ├── OcrQueryHandler.kt
+│       │   │               │   ├── RealTokenizer.kt
+│       │   │               │   ├── SimpleTokenizer.kt
+│       │   │               │   └── VLMInterface.kt
+│       │   │               ├── camera
+│       │   │               │   └── CameraController.kt
+│       │   │               ├── MainActivity.kt
+│       │   │               └── ui
+│       │   │                   ├── CameraPreview.kt
+│       │   │                   ├── SpeechManager.kt
+│       │   │                   ├── theme
+│       │   │                   │   ├── Color.kt
+│       │   │                   │   ├── Theme.kt
+│       │   │                   │   └── Type.kt
+│       │   │                   └── VisionQAScreen.kt
+│       │   └── res
+│       │       ├── drawable
+│       │       │   ├── ic_launcher_background.xml
+│       │       │   └── ic_launcher_foreground.xml
+│       │       ├── layout
+│       │       │   └── activity_main.xml
+│       │       ├── mipmap-anydpi-v26
+│       │       │   ├── ic_launcher.xml
+│       │       │   └── ic_launcher_round.xml
+│       │       ├── mipmap-hdpi
+│       │       │   ├── ic_launcher.webp
+│       │       │   └── ic_launcher_round.webp
+│       │       ├── mipmap-mdpi
+│       │       │   ├── ic_launcher.webp
+│       │       │   └── ic_launcher_round.webp
+│       │       ├── mipmap-xhdpi
+│       │       │   ├── ic_launcher.webp
+│       │       │   └── ic_launcher_round.webp
+│       │       ├── mipmap-xxhdpi
+│       │       │   ├── ic_launcher.webp
+│       │       │   └── ic_launcher_round.webp
+│       │       ├── mipmap-xxxhdpi
+│       │       │   ├── ic_launcher.webp
+│       │       │   └── ic_launcher_round.webp
+│       │       ├── values
+│       │       │   ├── colors.xml
+│       │       │   ├── strings.xml
+│       │       │   └── themes.xml
+│       │       └── xml
+│       │           ├── backup_rules.xml
+│       │           └── data_extraction_rules.xml
+│       └── test
+│           └── java
+│               └── com
+│                   └── anurag
+│                       └── visionqa
+│                           └── ExampleUnitTest.kt
+├── build.gradle.kts
+├── gradle
+│   ├── libs.versions.toml
+│   └── wrapper
+│       └── gradle-wrapper.jar
+├── gradle.properties
+├── local.properties
+└── settings.gradle.kts
+
+
+================================================================================
+# FILE: app\build.gradle.kts
+# LINES: 91
+================================================================================
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+    }
+}
+
+
+    android {
+    namespace = "com.anurag.visionqa"
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = "com.anurag.visionqa"
+        minSdk = 24
+        targetSdk = 36
+        versionCode = 1
+        versionName = "1.0"
+
+        // Remove ndk and externalNativeBuild sections completely
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+    buildFeatures {
+        compose = true
+    }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+dependencies {
+    // Core + Compose
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // CameraX
+    implementation("androidx.camera:camera-core:1.3.4")
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+
+    // ONNX Runtime for Android
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
+
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // OkHttp for downloads
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Tests
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+
+    implementation("com.google.mlkit:text-recognition:16.0.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.6")
+    implementation("androidx.compose.material:material-icons-extended")
+}
+
+================================================================================
+# FILE: app\release\output-metadata.json
+# LINES: 37
+================================================================================
+
+{
+  "version": 3,
+  "artifactType": {
+    "type": "APK",
+    "kind": "Directory"
+  },
+  "applicationId": "com.anurag.visionqa",
+  "variantName": "release",
+  "elements": [
+    {
+      "type": "SINGLE",
+      "filters": [],
+      "attributes": [],
+      "versionCode": 1,
+      "versionName": "1.0",
+      "outputFile": "app-release.apk"
+    }
+  ],
+  "elementType": "File",
+  "baselineProfiles": [
+    {
+      "minApi": 28,
+      "maxApi": 30,
+      "baselineProfiles": [
+        "baselineProfiles/1/app-release.dm"
+      ]
+    },
+    {
+      "minApi": 31,
+      "maxApi": 2147483647,
+      "baselineProfiles": [
+        "baselineProfiles/0/app-release.dm"
+      ]
+    }
+  ],
+  "minSdkVersionForDexing": 24
+}
+
+================================================================================
+# FILE: app\src\androidTest\java\com\anurag\visionqa\ExampleInstrumentedTest.kt
+# LINES: 24
+================================================================================
+
+package com.anurag.visionqa
+
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.ext.junit.runners.AndroidJUnit4
+
+import org.junit.Test
+import org.junit.runner.RunWith
+
+import org.junit.Assert.*
+
+/**
+ * Instrumented test, which will execute on an Android device.
+ *
+ * See [testing documentation](http://d.android.com/tools/testing).
+ */
+@RunWith(AndroidJUnit4::class)
+class ExampleInstrumentedTest {
+    @Test
+    fun useAppContext() {
+        // Context of the app under test.
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        assertEquals("com.anurag.visionqa", appContext.packageName)
+    }
+}
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ai\FakeAI.kt
+# LINES: 9
+================================================================================
+
+package com.anurag.visionqa.ai
+
+import android.graphics.Bitmap
+
+fun runFakeAI(bitmap: Bitmap, question: String): String {
+    Thread.sleep(2000)
+    return "FAKE AI RESULT\nImage: ${bitmap.width}x${bitmap.height}\nQuestion: $question"
+}
+
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ai\MoondreamDownloader.kt
+# LINES: 185
+================================================================================
+
+package com.anurag.visionqa.ai
+
+import android.content.Context
+import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.File
+import java.io.FileOutputStream
+import java.util.concurrent.TimeUnit
+
+class MoondreamDownloader(private val context: Context) {
+
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(120, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
+        .writeTimeout(120, TimeUnit.SECONDS)
+        .build()
+
+    private val modelDir = File(context.filesDir, "models")
+
+    companion object {
+        private const val TAG = "MoondreamDownloader"
+    }
+
+    init {
+        if (!modelDir.exists()) {
+            modelDir.mkdirs()
+        }
+    }
+
+    suspend fun downloadIfNeeded(
+        onProgress: (String, Int) -> Unit
+    ): Boolean = withContext(Dispatchers.IO) {
+
+        val visionFile = File(modelDir, "vision_encoder.onnx")
+        val embedFile = File(modelDir, "embed_tokens.onnx")
+        val decoderFile = File(modelDir, "decoder_model.onnx")
+        val tokenizerFile = File(modelDir, "tokenizer.json")
+
+        // Clean up the old monolithic model to save phone storage!
+        val oldModel = File(modelDir, "moondream-q4.onnx")
+        if (oldModel.exists()) {
+            oldModel.delete()
+            Log.d(TAG, "Deleted incompatible monolithic model.")
+        }
+
+        // Check if all 4 files exist
+        if (modelsExist()) {
+            onProgress("Models ready (~1.5GB)", 100)
+            return@withContext true
+        }
+
+        try {
+            // 1. Download Vision Encoder (280MB)
+            if (!visionFile.exists() || visionFile.length() < 100_000_000) {
+                onProgress("Downloading Vision AI (280MB)...", 0)
+                downloadFile(
+                    url = "https://huggingface.co/Xenova/moondream2/resolve/main/onnx/vision_encoder_q4.onnx",
+                    destination = visionFile,
+                    onProgress = { p -> onProgress("Vision AI: $p%", (p * 0.2).toInt()) }
+                )
+            }
+
+            // 2. Download Text Embedder (419MB)
+            if (!embedFile.exists() || embedFile.length() < 100_000_000) {
+                onProgress("Downloading Text Embedder (419MB)...", 20)
+                downloadFile(
+                    url = "https://huggingface.co/Xenova/moondream2/resolve/main/onnx/embed_tokens_q4.onnx",
+                    destination = embedFile,
+                    onProgress = { p -> onProgress("Text Embedder: $p%", 20 + (p * 0.2).toInt()) }
+                )
+            }
+
+            // 3. Download Main Decoder (824MB)
+            if (!decoderFile.exists() || decoderFile.length() < 100_000_000) {
+                onProgress("Downloading Main Decoder (824MB)...", 40)
+                downloadFile(
+                    url = "https://huggingface.co/Xenova/moondream2/resolve/main/onnx/decoder_model_merged_q4.onnx",
+                    destination = decoderFile,
+                    onProgress = { p -> onProgress("Main Decoder: $p%", 40 + (p * 0.55).toInt()) }
+                )
+            }
+
+            // 4. Download Tokenizer (~2MB)
+            if (!tokenizerFile.exists() || tokenizerFile.length() < 1000) {
+                onProgress("Downloading Tokenizer...", 95)
+                downloadFile(
+                    url = "https://huggingface.co/vikhyatk/moondream2/resolve/main/tokenizer.json",
+                    destination = tokenizerFile,
+                    onProgress = { p -> onProgress("Tokenizer: $p%", 95 + (p * 0.05).toInt()) }
+                )
+            }
+
+            Log.d(TAG, "✅ All downloads complete!")
+            onProgress("Download complete!", 100)
+            true
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Download failed", e)
+            onProgress("Download failed: ${e.message}", 0)
+            false
+        }
+    }
+
+    private fun downloadFile(
+        url: String,
+        destination: File,
+        onProgress: (Int) -> Unit
+    ) {
+        Log.d(TAG, "Starting download: $url")
+        val request = Request.Builder().url(url).build()
+        val response = client.newCall(request).execute()
+
+        if (!response.isSuccessful) throw Exception("HTTP ${response.code}: ${response.message}")
+
+        val body = response.body ?: throw Exception("Empty response body")
+        val contentLength = body.contentLength()
+
+        body.byteStream().use { input ->
+            FileOutputStream(destination).use { output ->
+                val buffer = ByteArray(8192)
+                var totalBytes = 0L
+                var bytes: Int
+                var lastProgress = 0
+                var lastLogTime = System.currentTimeMillis()
+
+                while (input.read(buffer).also { bytes = it } != -1) {
+                    output.write(buffer, 0, bytes)
+                    totalBytes += bytes
+
+                    if (contentLength > 0) {
+                        val progress = ((totalBytes * 100) / contentLength).toInt()
+                        val now = System.currentTimeMillis()
+
+                        if (progress >= lastProgress + 2 || now - lastLogTime > 5000) {
+                            onProgress(progress)
+                            lastProgress = progress
+                            lastLogTime = now
+                        }
+                    }
+                }
+                output.flush()
+                onProgress(100)
+            }
+        }
+    }
+
+    // --- CRITICAL PATHS FOR KV CACHE MOONDREAMVLM.KT ---
+    fun getVisionPath(): String = File(modelDir, "vision_encoder.onnx").absolutePath
+    fun getEmbedPath(): String = File(modelDir, "embed_tokens.onnx").absolutePath
+    fun getDecoderPath(): String = File(modelDir, "decoder_model.onnx").absolutePath
+
+    fun getTokenizerPath(): String = File(modelDir, "tokenizer.json").absolutePath
+
+    fun modelsExist(): Boolean {
+        val vision = File(modelDir, "vision_encoder.onnx")
+        val embed = File(modelDir, "embed_tokens.onnx")
+        val decoder = File(modelDir, "decoder_model.onnx")
+        val tokenizer = File(modelDir, "tokenizer.json")
+
+        return vision.exists() && embed.exists() && decoder.exists() && tokenizer.exists()
+    }
+
+    fun deleteModels() {
+        try {
+            File(modelDir, "vision_encoder.onnx").delete()
+            File(modelDir, "embed_tokens.onnx").delete()
+            File(modelDir, "decoder_model.onnx").delete()
+            File(modelDir, "tokenizer.json").delete()
+            Log.d(TAG, "✅ Deleted all model files")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting models", e)
+        }
+    }
+
+    fun getModelInfo(): String {
+        return buildString {
+            appendLine("=== Split ONNX Model Files ===")
+            appendLine("Location: ${modelDir.absolutePath}")
+            appendLine("Status: ${if (modelsExist()) "✅ Ready" else "❌ Missing"}")
+        }
+    }
+}
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ai\MoondreamVLM.kt
+# LINES: 488
+================================================================================
+
+package com.anurag.visionqa.ai
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.util.Log
+import ai.onnxruntime.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.nio.FloatBuffer
+import java.nio.LongBuffer
+
+class MoondreamVLM(private val context: Context) : VLMInterface {
+
+    private var ortEnv: OrtEnvironment? = null
+    private var visionSession: OrtSession? = null
+    private var embedSession: OrtSession? = null
+    private var decoderSession: OrtSession? = null
+    private var tokenizer: RealTokenizer? = null
+    private val downloader = MoondreamDownloader(context)
+    private var ready = false
+
+    // KV Cache
+    private var persistentKVCache: MutableMap<String, OnnxTensor>? = null
+    private var lastSessionResult: OrtSession.Result? = null
+    private var currentSequenceLength = 0
+
+    // Image feature cache — vision encoder runs ONCE per captured image
+    private var cachedImageFeatures: Array<FloatArray>? = null
+    private var cachedImageBitmap: Bitmap? = null
+
+    companion object {
+        private const val TAG = "MoondreamVLM"
+        private const val IMAGE_SIZE = 378
+        private const val MAX_NEW_TOKENS = 512
+
+        // Repetition penalty: penalises tokens already generated.
+        // 1.0 = off. Small quantized models need a stronger penalty (1.5)
+        // because their logit distributions are noisier than full-size models.
+        private const val REPETITION_PENALTY = 1.15f
+
+        // Temperature for sampling. Small quantized models hallucinate badly
+        // at temperatures above ~0.4. Keep this low — we rely on the repetition
+        // penalty (not temperature) to prevent loops.
+        private const val TEMPERATURE = 0.0f
+
+        // Top-k: only consider this many candidate tokens per step.
+        // 5 is tight enough to prevent hallucinated names on a q4 model
+        // while still allowing natural variation in phrasing.
+        private const val TOP_K = 5
+    }
+
+    suspend fun initialize(onProgress: (String, Int) -> Unit = { _, _ -> }): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "=== MOONDREAM INIT ===")
+                if (!downloader.downloadIfNeeded { msg, prog -> onProgress(msg, prog) })
+                    return@withContext false
+
+                tokenizer = RealTokenizer(context, downloader.getTokenizerPath())
+
+                // ---- TOKENIZER SANITY CHECK ----
+                // In Logcat filter by "MoondreamVLM" and look for:
+                //   selfTest: encode('Hello world')=[15496, 995] decoded='Hello world'
+                // If you see [0,0] or empty list → tokenizer.json didn't load properly.
+                Log.i(TAG, "Tokenizer check: ${tokenizer!!.selfTest()}")
+
+                ortEnv = OrtEnvironment.getEnvironment()
+
+//                val options = OrtSession.SessionOptions().apply {
+//                    setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
+//                    try {
+//                        // 1. Try Hardware Acceleration (NNAPI) first!
+//                        addNnapi()
+//                        Log.d(TAG, "✅ NNAPI (Hardware Acceleration) Enabled!")
+//                    } catch (e: Exception) {
+//                        Log.w(TAG, "NNAPI unavailable, falling back to CPU: ${e.message}")
+//                        // 2. Fall back to XNNPACK if NNAPI fails
+//                        try {
+//                            addXnnpack(mapOf("intra_op_num_threads" to "4"))
+//                        } catch (e2: Exception) {
+//                            setIntraOpNumThreads(4)
+//                        }
+//                    }
+//                }
+
+                val options = OrtSession.SessionOptions().apply {
+                    setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
+                    try {
+                        // Crucial: No addNnapi() here!
+                        addXnnpack(mapOf("intra_op_num_threads" to "4"))
+                        Log.d(TAG, "✅ XNNPACK Enabled")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "XNNPACK unavailable, falling back: ${e.message}")
+                        setIntraOpNumThreads(4)
+                    }
+                }
+
+                visionSession  = ortEnv!!.createSession(downloader.getVisionPath(), options)
+                embedSession   = ortEnv!!.createSession(downloader.getEmbedPath(), options)
+                decoderSession = ortEnv!!.createSession(downloader.getDecoderPath(), options)
+
+                ready = true
+                true
+            } catch (e: Exception) {
+                Log.e(TAG, "Init failed", e)
+                false
+            }
+        }
+
+    override suspend fun initialize(): Boolean = initialize { _, _ -> }
+    override fun isReady(): Boolean = ready
+
+    fun resetChat() {
+        lastSessionResult?.close()
+        lastSessionResult = null
+        persistentKVCache = null
+        currentSequenceLength = 0
+        cachedImageFeatures = null
+        cachedImageBitmap = null
+        Log.d(TAG, "🧹 Memory wiped.")
+    }
+
+    fun clearTextMemory() {
+        lastSessionResult?.close()
+        lastSessionResult = null
+        persistentKVCache = null
+        currentSequenceLength = 0
+        // Notice we DO NOT set cachedImageFeatures to null here.
+        // This keeps the image processing instant!
+        Log.d(TAG, "🧹 Text memory wiped. Image features retained.")
+    }
+
+    // Standard VLMInterface chat (no OCR text)
+    override suspend fun chat(
+        image: Bitmap,
+        question: String,
+        systemPrompt: String?,
+        conversationHistory: List<Pair<String, String>>,
+        onTokenGenerated: ((String) -> Unit)?
+    ): String = chatWithOcr(image, question, null, null, onTokenGenerated)
+
+    /**
+     * Primary entry point. Pass [ocrText] from OcrHelper if available —
+     * it gets injected into the prompt so the model reasons about accurate
+     * text instead of guessing from blurry 378×378 pixels.
+     */
+    suspend fun chatWithOcr(
+        image: Bitmap,
+        question: String,
+        ocrText: String?,
+        systemPrompt: String? = null,
+        onTokenGenerated: ((String) -> Unit)? = null
+    ): String = withContext(Dispatchers.IO) {
+        if (!ready) return@withContext "Not initialized"
+
+        if (currentSequenceLength > 1500) {
+            Log.w(TAG, "⚠️ Context too long, resetting.")
+            resetChat()
+        }
+
+        try {
+            // Intercept identity questions — moondream2 has no instruction-tuning
+            // for identity and will always invent a name from training data.
+            // No prompt wording can reliably prevent this, so we short-circuit.
+            val lq = question.trim().lowercase()
+            val isIdentityQuestion = (lq.contains("who are you") ||
+                    lq.contains("what are you") ||
+                    (lq.contains("your name") && (lq.contains("what") || lq.contains("tell"))) ||
+                    lq == "your name?" || lq == "name?")
+            if (isIdentityQuestion) {
+                val reply = "I am an AI assistant. I do not have a name."
+                onTokenGenerated?.invoke(reply)
+                return@withContext reply
+            }
+
+            val isFollowUp = persistentKVCache != null
+
+            val prompt = tokenizer!!.formatPrompt(
+                question     = question,
+                ocrText      = ocrText,
+                systemPrompt = systemPrompt,
+                isFollowUp   = isFollowUp
+            )
+
+            Log.i("VISION_PROMPT", "=== EXACT PROMPT GOING TO MODEL ===\n$prompt")
+
+            val inputIds = tokenizer!!.encode(prompt)
+
+            // Log the first few token IDs so you can verify in Logcat
+            Log.d(TAG, "Encoded ${inputIds.size} tokens, first 10: ${inputIds.take(10).toList()}")
+
+            if (inputIds.isEmpty()) {
+                Log.e(TAG, "❌ encode() returned empty! Check tokenizer selfTest in Logcat.")
+                return@withContext "Tokenizer error — see Logcat."
+            }
+
+            val textEmbeds  = embedText(inputIds)
+            val finalEmbeds = if (!isFollowUp) {
+                val imgEmbeds = getOrEncodeImage(image)
+                combineEmbeddings(imgEmbeds, textEmbeds)
+            } else {
+                textEmbeds
+            }
+
+            val response = generateWithKVCache(finalEmbeds, MAX_NEW_TOKENS, onTokenGenerated)
+            response.trim().removePrefix("Answer:").removePrefix(":").trim()
+
+        } catch (e: Exception) {
+            Log.e(TAG, "chatWithOcr error", e)
+            "Error: ${e.message}"
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Image encoding with cache
+    // -----------------------------------------------------------------------
+
+    private fun getOrEncodeImage(bitmap: Bitmap): Array<FloatArray> {
+        if (cachedImageBitmap === bitmap && cachedImageFeatures != null) {
+            Log.d(TAG, "♻️ Reusing cached image features.")
+            return cachedImageFeatures!!
+        }
+        Log.d(TAG, "🖼️ Running vision encoder...")
+        val features = encodeImage(bitmap)
+        cachedImageFeatures = features
+        cachedImageBitmap = bitmap
+        return features
+    }
+
+    private fun encodeImage(bitmap: Bitmap): Array<FloatArray> {
+        val resized = Bitmap.createScaledBitmap(bitmap, IMAGE_SIZE, IMAGE_SIZE, true)
+        val pixels  = IntArray(IMAGE_SIZE * IMAGE_SIZE)
+        resized.getPixels(pixels, 0, IMAGE_SIZE, 0, 0, IMAGE_SIZE, IMAGE_SIZE)
+        val imageData = FloatArray(3 * IMAGE_SIZE * IMAGE_SIZE)
+        for (i in pixels.indices) {
+            val p = pixels[i]
+            imageData[i]                              = (((p shr 16) and 0xFF) / 255f - 0.5f) / 0.5f
+            imageData[IMAGE_SIZE * IMAGE_SIZE + i]    = (((p shr  8) and 0xFF) / 255f - 0.5f) / 0.5f
+            imageData[2 * IMAGE_SIZE * IMAGE_SIZE + i]= (( p         and 0xFF) / 255f - 0.5f) / 0.5f
+        }
+        val t = OnnxTensor.createTensor(
+            ortEnv, FloatBuffer.wrap(imageData),
+            longArrayOf(1, 3, IMAGE_SIZE.toLong(), IMAGE_SIZE.toLong())
+        )
+        val out = visionSession!!.run(mapOf("pixel_values" to t))
+        val features = ((out[0].value as Array<*>)[0]) as Array<FloatArray>
+        t.close(); out.close()
+        return features
+    }
+
+    // -----------------------------------------------------------------------
+    // Text embedding
+    // -----------------------------------------------------------------------
+
+    private fun embedText(inputIds: IntArray): Array<FloatArray> {
+        val longs  = LongArray(inputIds.size) { inputIds[it].toLong() }
+        val tensor = OnnxTensor.createTensor(
+            ortEnv, LongBuffer.wrap(longs), longArrayOf(1, longs.size.toLong())
+        )
+        val out    = embedSession!!.run(mapOf("input_ids" to tensor))
+        val embeds = ((out[0].value as Array<*>)[0]) as Array<FloatArray>
+        tensor.close(); out.close()
+        return embeds
+    }
+
+    private fun combineEmbeddings(a: Array<FloatArray>, b: Array<FloatArray>) = a + b
+
+    // -----------------------------------------------------------------------
+    // Autoregressive generation with KV cache
+    // -----------------------------------------------------------------------
+
+    private fun generateWithKVCache(
+        embeddings: Array<FloatArray>,
+        maxTokens: Int,
+        onToken: ((String) -> Unit)?
+    ): String {
+        val generated  = mutableListOf<Int>()
+        val seqLen     = embeddings.size
+        val hiddenSize = embeddings[0].size
+        val eosId      = tokenizer?.getEosId() ?: 50256
+        val numLayers  = 24
+
+        val flat = FloatArray(seqLen * hiddenSize)
+        for (i in embeddings.indices)
+            for (j in embeddings[i].indices)
+                flat[i * hiddenSize + j] = embeddings[i][j]
+
+        val inputs  = mutableMapOf<String, OnnxTensor>()
+        val created = mutableListOf<OnnxTensor>()
+
+        fun addTensor(key: String, t: OnnxTensor) { inputs[key] = t; created.add(t) }
+
+        addTensor("inputs_embeds", OnnxTensor.createTensor(
+            ortEnv, FloatBuffer.wrap(flat), longArrayOf(1, seqLen.toLong(), hiddenSize.toLong())
+        ))
+
+        if (persistentKVCache == null) {
+            currentSequenceLength = seqLen
+            addTensor("attention_mask", OnnxTensor.createTensor(
+                ortEnv, LongBuffer.wrap(LongArray(seqLen) { 1L }), longArrayOf(1, seqLen.toLong())
+            ))
+            addTensor("position_ids", OnnxTensor.createTensor(
+                ortEnv, LongBuffer.wrap(LongArray(seqLen) { it.toLong() }), longArrayOf(1, seqLen.toLong())
+            ))
+            val empty = FloatArray(0); val es = longArrayOf(1, 32, 0, 64)
+            for (l in 0 until numLayers) {
+                inputs["past_key_values.$l.key"]   = OnnxTensor.createTensor(ortEnv, FloatBuffer.wrap(empty), es)
+                inputs["past_key_values.$l.value"] = OnnxTensor.createTensor(ortEnv, FloatBuffer.wrap(empty), es)
+            }
+        } else {
+            val total = currentSequenceLength + seqLen
+            addTensor("attention_mask", OnnxTensor.createTensor(
+                ortEnv, LongBuffer.wrap(LongArray(total) { 1L }), longArrayOf(1, total.toLong())
+            ))
+            addTensor("position_ids", OnnxTensor.createTensor(
+                ortEnv, LongBuffer.wrap(LongArray(seqLen) { (currentSequenceLength + it).toLong() }),
+                longArrayOf(1, seqLen.toLong())
+            ))
+            inputs.putAll(persistentKVCache!!)
+            currentSequenceLength = total
+        }
+
+        var prevOut: OrtSession.Result? = null
+
+        for (step in 0 until maxTokens) {
+            try {
+                val out = decoderSession!!.run(inputs)
+                prevOut?.close(); prevOut = out
+
+                val logitsRaw = out[0].value
+                val rawLogits: FloatArray = when (logitsRaw) {
+                    is Array<*> -> (logitsRaw[0] as Array<*>).last() as FloatArray
+                    is FloatArray -> logitsRaw
+                    else -> throw Exception("Unexpected logits: ${logitsRaw?.javaClass}")
+                }
+
+                // Apply repetition penalty and temperature before sampling.
+                val logits = applyRepetitionPenalty(rawLogits, generated, REPETITION_PENALTY)
+                val tokenId = sampleWithTemperature(logits, TEMPERATURE)
+
+                if (tokenId == eosId) break
+
+                generated.add(tokenId)
+                onToken?.invoke(tokenizer!!.decode(intArrayOf(tokenId)))
+
+                // --- Update KV cache ---
+                val newKV = mutableMapOf<String, OnnxTensor>()
+                for (l in 0 until numLayers) {
+                    newKV["past_key_values.$l.key"]   = out.get("present.$l.key").get()   as OnnxTensor
+                    newKV["past_key_values.$l.value"] = out.get("present.$l.value").get() as OnnxTensor
+                }
+                created.forEach { it.close() }; created.clear(); inputs.clear()
+
+                val ne = embedText(intArrayOf(tokenId))
+                val nt = OnnxTensor.createTensor(
+                    ortEnv, FloatBuffer.wrap(ne[0]), longArrayOf(1, 1, hiddenSize.toLong())
+                )
+                inputs["inputs_embeds"] = nt; created.add(nt)
+                currentSequenceLength++
+
+                val at = OnnxTensor.createTensor(
+                    ortEnv, LongBuffer.wrap(LongArray(currentSequenceLength) { 1L }),
+                    longArrayOf(1, currentSequenceLength.toLong())
+                )
+                inputs["attention_mask"] = at; created.add(at)
+
+                val pt = OnnxTensor.createTensor(
+                    ortEnv, LongBuffer.wrap(longArrayOf((currentSequenceLength - 1).toLong())),
+                    longArrayOf(1, 1)
+                )
+                inputs["position_ids"] = pt; created.add(pt)
+                inputs.putAll(newKV)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Step $step error: ${e.message}")
+                break
+            }
+        }
+
+        // Persist KV cache for next turn
+        lastSessionResult?.close(); lastSessionResult = prevOut
+        persistentKVCache = mutableMapOf()
+        if (lastSessionResult != null) {
+            for (l in 0 until numLayers) {
+                persistentKVCache!!["past_key_values.$l.key"]   =
+                    lastSessionResult!!.get("present.$l.key").get()   as OnnxTensor
+                persistentKVCache!!["past_key_values.$l.value"] =
+                    lastSessionResult!!.get("present.$l.value").get() as OnnxTensor
+            }
+        }
+        created.forEach { it.close() }
+        return tokenizer!!.decode(generated.toIntArray())
+    }
+
+    // -----------------------------------------------------------------------
+    // Misc
+    // -----------------------------------------------------------------------
+
+    override fun getModelInfo(): ModelInfo = ModelInfo("Moondream2 ONNX", "~1.5GB", "Good", "Good")
+
+    // -----------------------------------------------------------------------
+    // Sampling helpers
+    // -----------------------------------------------------------------------
+
+    /**
+     * Applies a repetition penalty to logits.
+     * For every token that has already been generated, its logit is divided
+     * by [penalty] (if positive) or multiplied (if negative), making it
+     * less likely to appear again. Standard implementation from HuggingFace.
+     */
+    private fun applyRepetitionPenalty(
+        logits: FloatArray,
+        generatedTokens: List<Int>,
+        penalty: Float
+    ): FloatArray {
+        if (penalty == 1.0f || generatedTokens.isEmpty()) return logits
+        val result = logits.copyOf()
+        // Use a set to avoid penalising the same token twice
+        for (tokenId in generatedTokens.toSet()) {
+            if (tokenId < result.size) {
+                result[tokenId] = if (result[tokenId] > 0f)
+                    result[tokenId] / penalty
+                else
+                    result[tokenId] * penalty
+            }
+        }
+        return result
+    }
+
+    /**
+     * Samples a token using temperature scaling.
+     * temperature = 1.0 → greedy argmax (deterministic, prone to loops).
+     * temperature < 1.0 → sharper distribution (more focused).
+     * temperature > 1.0 → flatter distribution (more random).
+     *
+     * We use top-k=40 filtering before sampling so extremely low-probability
+     * tokens (garbage, hallucinations) are never sampled.
+     */
+    private fun sampleWithTemperature(logits: FloatArray, temperature: Float): Int {
+        if (temperature <= 0f) {
+            // Pure greedy
+            return logits.indices.maxByOrNull { logits[it] } ?: 0
+        }
+
+        // Scale logits by temperature
+        val scaled = FloatArray(logits.size) { logits[it] / temperature }
+
+        // Top-k filtering: zero out everything outside top 40 tokens
+        val k = TOP_K
+        val topKIndices = scaled.indices
+            .sortedByDescending { scaled[it] }
+            .take(k)
+            .toSet()
+        val filtered = FloatArray(scaled.size) { i ->
+            if (i in topKIndices) scaled[i] else Float.NEGATIVE_INFINITY
+        }
+
+        // Softmax
+        val maxLogit = filtered.filter { it.isFinite() }.maxOrNull() ?: 0f
+        val exps = FloatArray(filtered.size) { i ->
+            if (filtered[i].isFinite()) Math.exp((filtered[i] - maxLogit).toDouble()).toFloat()
+            else 0f
+        }
+        val sumExp = exps.sum()
+        if (sumExp <= 0f) return logits.indices.maxByOrNull { logits[it] } ?: 0
+
+        val probs = FloatArray(exps.size) { exps[it] / sumExp }
+
+        // Multinomial sample
+        val r = Math.random().toFloat()
+        var cumulative = 0f
+        for (i in probs.indices) {
+            cumulative += probs[i]
+            if (r < cumulative) return i
+        }
+        return probs.indices.maxByOrNull { probs[it] } ?: 0
+    }
+
+    override fun cleanup() {
+        resetChat()
+        visionSession?.close(); embedSession?.close()
+        decoderSession?.close(); ortEnv?.close()
+        ready = false
+    }
+
+    fun getDownloader(): MoondreamDownloader = downloader
+    fun testTokenizer(text: String): String = tokenizer?.selfTest() ?: "not loaded"
+}
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ai\OcrHelper.kt
+# LINES: 144
+================================================================================
+
+package com.anurag.visionqa.ai
+
+import android.graphics.Bitmap
+import android.util.Log
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
+import kotlin.math.abs
+
+/**
+ * Wraps MLKit text recognition and returns structured output.
+ *
+ * Instead of discarding MLKit's bounding box data (which we were doing by
+ * just calling result.text), we use the spatial coordinates to reconstruct
+ * the two-column layout of menus, price lists, signs, etc.
+ *
+ * This means "Mutton Biryani" on the left at y=120 is correctly paired with
+ * "Rs. 250/-" on the right at y=122, regardless of how the raw text string
+ * is ordered.
+ */
+class OcrHelper {
+
+    private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+
+    companion object {
+        private const val TAG = "OcrHelper"
+    }
+
+    data class OcrResult(
+        /** Raw text exactly as MLKit returns it — used for general questions */
+        val rawText: String,
+        /** Spatially reconstructed lines — used for structured queries */
+        val structuredLines: List<StructuredLine>
+    )
+
+    /**
+     * A single logical line of text reconstructed from spatial position.
+     * For a two-column layout like a menu, one line may have a left and right part.
+     */
+    data class StructuredLine(
+        val leftText: String,           // e.g. "Mutton Biryani"
+        val rightText: String = "",     // e.g. "Rs. 250/-"  (empty if single-column)
+        val y: Int = 0                  // vertical position for ordering
+    ) {
+        /** Returns the full line as a single string */
+        fun fullText() = if (rightText.isBlank()) leftText
+        else "$leftText  $rightText"
+    }
+
+    suspend fun extractText(bitmap: Bitmap): OcrResult? = suspendCoroutine { cont ->
+        val image = InputImage.fromBitmap(bitmap, 0)
+        recognizer.process(image)
+            .addOnSuccessListener { result ->
+                val raw = result.text.trim()
+                if (raw.isBlank()) {
+                    Log.d(TAG, "No text detected.")
+                    cont.resume(null)
+                    return@addOnSuccessListener
+                }
+
+                Log.i(TAG, "=== OCR RAW (${raw.length} chars) ===\n$raw\n=== END ===")
+
+                // Build structured lines from bounding box data
+                val structured = buildStructuredLines(result)
+                Log.i(TAG, "=== STRUCTURED (${structured.size} lines) ===")
+                structured.forEach { Log.i(TAG, "  L:'${it.leftText}' R:'${it.rightText}'") }
+
+                cont.resume(OcrResult(raw, structured))
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "OCR failed: ${e.message}")
+                cont.resume(null)
+            }
+    }
+
+    /**
+     * Reconstructs spatial layout from MLKit's bounding boxes.
+     *
+     * Algorithm:
+     * 1. Collect all text elements with their centre-y and centre-x positions
+     * 2. Find the image midpoint x — elements left of it are "left column",
+     *    elements right of it are "right column"
+     * 3. Group elements by y-position (within a threshold) into logical rows
+     * 4. Each row produces one StructuredLine with left and right parts
+     *
+     * This correctly handles any two-column layout (menus, price lists, forms)
+     * without any regex or hardcoded format assumptions.
+     */
+    private fun buildStructuredLines(
+        result: com.google.mlkit.vision.text.Text
+    ): List<StructuredLine> {
+
+        data class Element(val text: String, val cx: Int, val cy: Int)
+
+        // Collect all line-level elements with their centres
+        val elements = mutableListOf<Element>()
+        var maxX = 0
+
+        for (block in result.textBlocks) {
+            for (line in block.lines) {
+                val box = line.boundingBox ?: continue
+                val cx = (box.left + box.right) / 2
+                val cy = (box.top + box.bottom) / 2
+                if (box.right > maxX) maxX = box.right
+                elements.add(Element(line.text.trim(), cx, cy))
+            }
+        }
+
+        if (elements.isEmpty()) return emptyList()
+
+        val midX = maxX / 2
+
+        // Sort by vertical position
+        elements.sortBy { it.cy }
+
+        // Group into rows: elements within Y_THRESHOLD pixels of each other
+        // are considered the same logical row
+        val Y_THRESHOLD = 20
+        val rows = mutableListOf<MutableList<Element>>()
+        for (el in elements) {
+            val lastRow = rows.lastOrNull()
+            if (lastRow != null && abs(el.cy - lastRow.first().cy) <= Y_THRESHOLD) {
+                lastRow.add(el)
+            } else {
+                rows.add(mutableListOf(el))
+            }
+        }
+
+        // Convert each row to a StructuredLine
+        return rows.map { row ->
+            val leftParts  = row.filter { it.cx <= midX }
+                .sortedBy { it.cx }
+                .joinToString(" ") { it.text }
+            val rightParts = row.filter { it.cx > midX }
+                .sortedBy { it.cx }
+                .joinToString(" ") { it.text }
+            StructuredLine(leftParts, rightParts, row.first().cy)
+        }.filter { it.leftText.isNotBlank() || it.rightText.isNotBlank() }
+    }
+
+    fun close() { recognizer.close() }
+}
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ai\OcrQueryHandler.kt
+# LINES: 223
+================================================================================
+
+package com.anurag.visionqa.ai
+
+/**
+ * Answers questions directly from structured OCR output.
+ *
+ * Uses spatial line data from OcrHelper (bounding boxes) instead of regex,
+ * so it works on any two-column layout — menus, price lists, signs, forms —
+ * without hardcoded format assumptions.
+ *
+ * Routing logic:
+ *   - Text/reading questions   → return raw OCR text
+ *   - Price/list questions     → parse structured lines into item+price pairs
+ *   - Comparison questions     → compute cheapest/most expensive from pairs
+ *   - General questions        → return null (Moondream handles it)
+ */
+object OcrQueryHandler {
+
+    private val PRICE_REGEX = Regex(
+        """Rs\.?\s*\d[\d,]*\s*/?\-*|₹\s*\d[\d,]*|\$\s*\d[\d,.]*""",
+        RegexOption.IGNORE_CASE
+    )
+
+    private val PRICE_VALUE_REGEX = Regex("""[\d,]+""")
+
+    fun tryAnswer(question: String, ocrResult: OcrHelper.OcrResult?): String? {
+        if (ocrResult == null) return null
+        val q = question.trim().lowercase()
+
+        return when {
+            isReadQuestion(q)       -> formatReading(ocrResult.rawText)
+            isCheapestQuestion(q)   -> findCheapest(ocrResult.structuredLines)
+            isMostExpensive(q)      -> findMostExpensive(ocrResult.structuredLines)
+            isPriceQuestion(q)      -> formatPrices(ocrResult.structuredLines, ocrResult.rawText)
+            isListQuestion(q)       -> formatList(ocrResult.structuredLines, ocrResult.rawText)
+            isCountQuestion(q)      -> formatCount(ocrResult.structuredLines)
+            else                    -> null
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Intent detection
+    // -----------------------------------------------------------------------
+
+    private fun isReadQuestion(q: String) =
+        (q.contains("read") || q.contains("say") || q.contains("written") ||
+                q.contains("text") || q.contains("words")) &&
+                !isPriceQuestion(q) && !isListQuestion(q)
+
+    private fun isPriceQuestion(q: String) =
+        q.contains("price") || q.contains("cost") || q.contains("rate") ||
+                q.contains("how much") || q.contains("rupee") || q.contains("rs") ||
+                (q.contains("each") && q.contains("biryani")) ||
+                (q.contains("prices") && q.contains("of"))
+
+    private fun isListQuestion(q: String) =
+        (q.contains("list") || q.contains("all") || q.contains("available") ||
+                q.contains("what are") || q.contains("items") || q.contains("options") ||
+                q.contains("show") || q.contains("menu") || q.contains("dishes") ||
+                q.contains("what") && q.contains("see"))
+
+    private fun isCheapestQuestion(q: String) =
+        q.contains("cheap") || q.contains("least expensive") ||
+                q.contains("lowest price") || q.contains("minimum") ||
+                q.contains("budget") || q.contains("affordable") ||
+                (q.contains("most") && q.contains("affordable"))
+
+    private fun isMostExpensive(q: String) =
+        q.contains("expensive") || q.contains("costliest") ||
+                q.contains("highest price") || q.contains("maximum") ||
+                q.contains("most expensive") || q.contains("priciest")
+
+    private fun isCountQuestion(q: String) =
+        (q.contains("how many") || q.contains("count") || q.contains("number of")) &&
+                (q.contains("item") || q.contains("dish") || q.contains("option") ||
+                        q.contains("biryani") || q.contains("thing"))
+
+    // -----------------------------------------------------------------------
+    // Formatters
+    // -----------------------------------------------------------------------
+
+    private fun formatReading(raw: String) =
+        "The image contains this text:\n\n${raw.trim()}"
+
+    private fun formatPrices(lines: List<OcrHelper.StructuredLine>, raw: String): String {
+        val pairs = extractPairs(lines)
+        if (pairs.isEmpty()) return formatReading(raw)
+        return "Prices:\n\n" + pairs.joinToString("\n") { (item, price) -> "• $item — $price" }
+    }
+
+    private fun formatList(lines: List<OcrHelper.StructuredLine>, raw: String): String {
+        val pairs = extractPairs(lines)
+        return if (pairs.isNotEmpty()) {
+            // Show items with prices if available, items-only otherwise
+            "Items in the image:\n\n" + pairs.joinToString("\n") { (item, price) ->
+                if (price.isNotBlank()) "• $item — $price" else "• $item"
+            }
+        } else {
+            // No structured pairs — fall back to clean item lines
+            val items = extractItemsOnly(lines)
+            if (items.isEmpty()) formatReading(raw)
+            else "Items in the image:\n\n" + items.joinToString("\n") { "• $it" }
+        }
+    }
+
+    private fun findCheapest(lines: List<OcrHelper.StructuredLine>): String {
+        val pairs = extractPairs(lines)
+        if (pairs.isEmpty()) return "Could not find price information in the image."
+        val cheapest = pairs.minByOrNull { parsePriceValue(it.second) } ?: return "No prices found."
+        return "The cheapest option is ${cheapest.first} at ${cheapest.second}."
+    }
+
+    private fun findMostExpensive(lines: List<OcrHelper.StructuredLine>): String {
+        val pairs = extractPairs(lines)
+        if (pairs.isEmpty()) return "Could not find price information in the image."
+        val priciest = pairs.maxByOrNull { parsePriceValue(it.second) } ?: return "No prices found."
+        return "The most expensive option is ${priciest.first} at ${priciest.second}."
+    }
+
+    private fun formatCount(lines: List<OcrHelper.StructuredLine>): String {
+        val pairs = extractPairs(lines)
+        val items = if (pairs.isNotEmpty()) pairs.map { it.first } else extractItemsOnly(lines)
+        return "There are ${items.size} items visible in the image."
+    }
+
+    // -----------------------------------------------------------------------
+    // Core structured line parser
+    // -----------------------------------------------------------------------
+
+    /**
+     * Extracts (itemName, price) pairs from spatially structured lines.
+     *
+     * Because OcrHelper already split each line into left/right columns
+     * using bounding box midpoint, this is now trivial:
+     *   - leftText = item name (e.g. "Mutton Biryani")
+     *   - rightText = price (e.g. "Rs. 250/-")
+     *
+     * We also handle the layout where items and prices are on separate lines
+     * (rightText is blank, but the next line's rightText has the price).
+     */
+    private fun extractPairs(lines: List<OcrHelper.StructuredLine>): List<Pair<String, String>> {
+        val results = mutableListOf<Pair<String, String>>()
+        var pendingItem: String? = null
+
+        for (line in lines) {
+            val left  = line.leftText.trim()
+            val right = line.rightText.trim()
+
+            val leftHasPrice  = PRICE_REGEX.containsMatchIn(left)
+            val rightHasPrice = PRICE_REGEX.containsMatchIn(right)
+
+            when {
+                // Both columns present, right is the price
+                left.isNotBlank() && rightHasPrice && !leftHasPrice && !isNoise(left) -> {
+                    results.add(Pair(cleanItemName(left), right))
+                    pendingItem = null
+                }
+                // Both columns present, but left also has a price (e.g. "Rs. 180/- Rs. 35/-")
+                // Skip these — they're probably header/footer rows
+                leftHasPrice && rightHasPrice -> {
+                    pendingItem = null
+                }
+                // Left only, no price — this is an item name, wait for next line's price
+                left.isNotBlank() && right.isBlank() && !leftHasPrice && !isNoise(left) -> {
+                    pendingItem = cleanItemName(left)
+                }
+                // Right only has price, pair with pending item
+                left.isBlank() && rightHasPrice && pendingItem != null -> {
+                    results.add(Pair(pendingItem!!, right))
+                    pendingItem = null
+                }
+                // Single column with price — this is a price-only line
+                leftHasPrice && right.isBlank() && pendingItem != null -> {
+                    results.add(Pair(pendingItem!!, left))
+                    pendingItem = null
+                }
+                else -> {
+                    // Header, noise, or unrecognized — reset pending
+                    if (isHeader(left) || isNoise(left)) pendingItem = null
+                }
+            }
+        }
+
+        return results
+    }
+
+    private fun extractItemsOnly(lines: List<OcrHelper.StructuredLine>): List<String> {
+        return lines
+            .map { it.leftText.trim() }
+            .filter { it.isNotBlank() && !isHeader(it) && !isNoise(it) && !PRICE_REGEX.containsMatchIn(it) }
+            .map { cleanItemName(it) }
+            .filter { it.length > 2 }
+    }
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    private fun isHeader(text: String): Boolean {
+        if (text.length > 30) return false
+        val stripped = text.replace(" ", "").replace(".", "")
+        return stripped == stripped.uppercase() && stripped.length < 20 && !stripped.any { it.isDigit() }
+    }
+
+    private fun isNoise(text: String): Boolean {
+        if (text.length <= 2) return true
+        if (text.contains(".com") || text.contains("http") || text.contains("www.")) return true
+        if (text.all { it.isDigit() || it in ".,/ -" }) return true
+        return false
+    }
+
+    private fun cleanItemName(text: String): String =
+        text.trim().trimEnd('.', ',', ':', '-', ' ')
+
+    /**
+     * Extracts numeric value from a price string for comparison.
+     * "Rs. 250/-" → 250, "₹1,200" → 1200
+     */
+    private fun parsePriceValue(priceStr: String): Int {
+        val digits = PRICE_VALUE_REGEX.findAll(priceStr)
+            .joinToString("") { it.value.replace(",", "") }
+        return digits.toIntOrNull() ?: 0
+    }
+}
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ai\RealTokenizer.kt
+# LINES: 275
+================================================================================
+
+package com.anurag.visionqa.ai
+
+import android.content.Context
+import android.util.Log
+import org.json.JSONObject
+import java.io.File
+
+class RealTokenizer(private val context: Context, tokenizerPath: String? = null) {
+
+    private val vocab = mutableMapOf<String, Int>()
+    private val reverseVocab = mutableMapOf<Int, String>()
+    private val merges = mutableListOf<Pair<String, String>>()
+    private val mergePriority = mutableMapOf<String, Int>()
+
+    private val byteEncoder: Map<Int, Char> = buildByteEncoder()
+    private val byteDecoder: Map<Char, Int> = byteEncoder.entries.associate { (k, v) -> v to k }
+
+    private var eosTokenId = 50256
+    private val unkTokenId = 0
+
+    companion object {
+        private const val TAG = "RealTokenizer"
+
+        fun buildByteEncoder(): Map<Int, Char> {
+            val bs = mutableListOf<Int>()
+            for (b in 33..126) bs.add(b)
+            for (b in 161..172) bs.add(b)
+            for (b in 174..255) bs.add(b)
+            val cs = bs.map { it.toChar() }.toMutableList()
+            var n = 0
+            for (b in 0..255) {
+                if (b !in bs) { bs.add(b); cs.add((256 + n).toChar()); n++ }
+            }
+            return bs.zip(cs).toMap()
+        }
+    }
+
+    init {
+        Log.d(TAG, "=== TOKENIZER INIT ===")
+        loadTokenizer(tokenizerPath)
+        if (vocab.isNotEmpty() && merges.isNotEmpty()) {
+            Log.d(TAG, "✅ Tokenizer ready. ${selfTest()}")
+        } else {
+            Log.e(TAG, "❌ Tokenizer failed to load!")
+        }
+    }
+
+    private fun loadTokenizer(path: String?) {
+        if (path != null) {
+            val f = File(path)
+            if (f.exists() && f.length() > 100) {
+                try {
+                    parseTokenizerJson(f.readText())
+                    if (vocab.isNotEmpty() && merges.isNotEmpty()) return
+                } catch (e: Exception) { Log.e(TAG, "File parse failed: ${e.message}") }
+            } else { Log.w(TAG, "File missing/small: $path") }
+        }
+        try {
+            val json = context.assets.open("tokenizer.json").bufferedReader().use { it.readText() }
+            parseTokenizerJson(json)
+            if (vocab.isNotEmpty() && merges.isNotEmpty()) return
+        } catch (e: Exception) { Log.w(TAG, "Assets not found: ${e.message}") }
+        Log.e(TAG, "❌ Could not load tokenizer — using char fallback.")
+        buildCharFallback()
+    }
+
+    private fun parseTokenizerJson(json: String) {
+        try {
+            val root  = JSONObject(json)
+            val model = root.optJSONObject("model")
+                ?: throw IllegalArgumentException("No 'model' key")
+
+            model.optJSONObject("vocab")?.let { vocabJson ->
+                vocabJson.keys().forEach { token ->
+                    val id = vocabJson.getInt(token)
+                    vocab[token] = id; reverseVocab[id] = token
+                }
+            } ?: throw IllegalArgumentException("No 'vocab'")
+
+            vocab["<|endoftext|>"]?.let { eosTokenId = it }
+
+            model.optJSONArray("merges")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    val line = arr.getString(i)
+                    val idx  = line.indexOf(' ')
+                    if (idx < 0) continue
+                    val left  = line.substring(0, idx)
+                    val right = line.substring(idx + 1)
+                    merges.add(Pair(left, right))
+                    mergePriority["$left $right"] = i
+                }
+            } ?: throw IllegalArgumentException("No 'merges'")
+
+            root.optJSONArray("added_tokens")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    val obj     = arr.getJSONObject(i)
+                    val content = obj.getString("content")
+                    val id      = obj.getInt("id")
+                    vocab[content] = id; reverseVocab[id] = content
+                }
+            }
+
+            Log.d(TAG, "Parsed: ${vocab.size} tokens, ${merges.size} merges, EOS=$eosTokenId")
+        } catch (e: Exception) {
+            Log.e(TAG, "parseTokenizerJson: ${e.message}")
+            vocab.clear(); reverseVocab.clear(); merges.clear(); mergePriority.clear()
+        }
+    }
+
+    private fun buildCharFallback() {
+        eosTokenId = 50256
+        vocab["<|endoftext|>"] = 50256; reverseVocab[50256] = "<|endoftext|>"
+        for (i in 32..126) {
+            val ch = i.toChar().toString()
+            vocab[ch] = i; reverseVocab[i] = ch
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Encoding
+    // -----------------------------------------------------------------------
+
+    fun encode(text: String): IntArray {
+        if (merges.isEmpty() || vocab.isEmpty()) {
+            Log.w(TAG, "encode() called but tokenizer not loaded!")
+            return IntArray(0)
+        }
+        return encodeBPE(text).toIntArray()
+    }
+
+    private fun encodeBPE(text: String): List<Int> {
+        val tokenIds = mutableListOf<Int>()
+        for (chunk in splitChunks(text)) {
+            if (chunk.isEmpty()) continue
+            val symbols = chunk.toByteArray(Charsets.UTF_8)
+                .map { b -> byteEncoder[b.toInt() and 0xFF]!!.toString() }
+                .toMutableList()
+            applyMerges(symbols)
+            for (sym in symbols) {
+                val id = vocab[sym]
+                if (id != null) tokenIds.add(id)
+                else for (ch in sym) tokenIds.add(vocab[ch.toString()] ?: unkTokenId)
+            }
+        }
+        return tokenIds
+    }
+
+    private fun splitChunks(text: String): List<String> {
+        val chunks = mutableListOf<String>()
+        val sb     = StringBuilder()
+        var i      = 0
+        while (i < text.length) {
+            val ch = text[i]
+            when {
+                ch == '\n' || ch == '\r' -> {
+                    if (sb.isNotEmpty()) { chunks.add(sb.toString()); sb.clear() }
+                    chunks.add(ch.toString())
+                }
+                ch == ' ' -> {
+                    if (sb.isNotEmpty()) { chunks.add(sb.toString()); sb.clear() }
+                    if (i + 1 < text.length && text[i + 1].isLetterOrDigit()) sb.append(' ')
+                    else chunks.add(" ")
+                }
+                ch.isLetterOrDigit() -> sb.append(ch)
+                else -> {
+                    if (sb.isNotEmpty()) { chunks.add(sb.toString()); sb.clear() }
+                    chunks.add(ch.toString())
+                }
+            }
+            i++
+        }
+        if (sb.isNotEmpty()) chunks.add(sb.toString())
+        return chunks
+    }
+
+    private fun applyMerges(symbols: MutableList<String>) {
+        while (symbols.size > 1) {
+            var bestRank = Int.MAX_VALUE
+            var bestIdx  = -1
+            for (i in 0 until symbols.size - 1) {
+                val rank = mergePriority["${symbols[i]} ${symbols[i + 1]}"]
+                if (rank != null && rank < bestRank) { bestRank = rank; bestIdx = i }
+            }
+            if (bestIdx == -1) break
+            val merged = symbols[bestIdx] + symbols[bestIdx + 1]
+            symbols[bestIdx] = merged
+            symbols.removeAt(bestIdx + 1)
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Decoding
+    // -----------------------------------------------------------------------
+
+    fun decode(tokens: IntArray): String {
+        if (tokens.isEmpty()) return ""
+        return try {
+            val rawStr = tokens
+                .filter { it != eosTokenId }
+                .mapNotNull { reverseVocab[it] }
+                .joinToString("")
+            val bytes = rawStr.mapNotNull { byteDecoder[it]?.toByte() }.toByteArray()
+            bytes.toString(Charsets.UTF_8)
+        } catch (e: Exception) {
+            Log.e(TAG, "decode error: ${e.message}")
+            ""
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Prompt formatting
+    // -----------------------------------------------------------------------
+
+    fun formatPrompt(
+        question: String,
+        ocrText: String? = null,
+        systemPrompt: String? = null,
+        isFollowUp: Boolean = false
+    ): String {
+        val sb = StringBuilder()
+
+        // 1. Inject the OCR context if it exists (for the current image)
+        if (!isFollowUp && !ocrText.isNullOrBlank()) {
+            val sanitized = sanitizeOcrText(ocrText)
+            if (sanitized.isNotBlank()) {
+                sb.append("Text detected in the image:\n\"\"\"\n$sanitized\n\"\"\"\n\n")
+            }
+        }
+
+        // 2. The Diverse Few-Shot Examples (Only needed on the first turn)
+        if (!isFollowUp) {
+            sb.append("Here are some examples of how to answer concisely and accurately:\n\n")
+
+            // Example 1: Data Extraction (Menus, Receipts, Invoices)
+            sb.append("Example 1:\nQuestion: What is the price of the Veg Biryani?\nAnswer: The Veg Biryani is 180/-\n\n")
+
+            // Example 2: Visual Observation (Scenes, Objects, Colors)
+            sb.append("Example 2:\nQuestion: How many cars are parked on the street?\nAnswer: There are three cars parked on the street.\n\n")
+
+            // Example 3: Text in the wild (Signs, Books, Shirts)
+            sb.append("Example 3:\nQuestion: What does the yellow sign say?\nAnswer: The yellow sign says 'CAUTION: WET FLOOR'.\n\n")
+
+            // Example 4: Refusal / Hallucination prevention
+            sb.append("Example 4:\nQuestion: What is the man's name?\nAnswer: I cannot determine the man's name from the image.\n\n")
+        }
+
+        // 3. The actual user question
+        val safeQuestion = question.replace("\"", "'")
+        sb.append("Question: $safeQuestion\n\nAnswer:")
+
+        return "\n\n$sb"
+    }
+
+    // --- AND HERE ---
+    private fun sanitizeOcrText(text: String): String {
+        return text
+            .replace(Regex("[<>|\\[\\]]"), "")    // remove special-token chars
+            .replace(Regex("[ \\t]+"), " ")       // collapse multiple spaces/tabs into a single space
+            .replace(Regex("\\n+"), "\n")         // PRESERVE newlines, but collapse multiple empty lines into one
+            .trim()
+    }
+
+    // -----------------------------------------------------------------------
+    // Diagnostics
+    // -----------------------------------------------------------------------
+
+    fun getVocabSize(): Int = vocab.size
+    fun getEosId(): Int = eosTokenId
+
+    fun selfTest(): String {
+        val ids     = encode("Hello world").toList()
+        val decoded = decode(encode("Hello world"))
+        return "selfTest: encode('Hello world')=$ids decoded='$decoded' (expect [15496, 995])"
+    }
+}
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ai\SimpleTokenizer.kt
+# LINES: 84
+================================================================================
+
+package com.anurag.visionqa.ai
+
+class SimpleTokenizer {
+
+    private val vocab = mutableMapOf<String, Long>()
+    private val reverseVocab = mutableMapOf<Long, String>()
+
+    init {
+        buildVocab()
+    }
+
+    private fun buildVocab() {
+        fun reg(word: String, id: Long) {
+            vocab[word.lowercase()] = id
+            reverseVocab[id] = word
+        }
+
+        // --- MANDATORY GPT-2 / MOONDREAM IDs ---
+        reg("<|endoftext|>", 50256L)
+        reg("<image>", 50257L)
+        reg("question", 11601L)
+        reg("answer", 18620L)
+
+        // Common Helper Tokens
+        reg("\n", 198L)
+        reg(":", 25L)
+        reg(" ", 220L)
+        reg(".", 13L)
+        reg("?", 30L)
+        reg(",", 11L)
+        reg("yes", 9891L)
+        reg("no", 3763L)
+        reg("Yes", 3363L) // Capitalized
+        reg("No", 1400L)
+        reg("pen", 11270L)
+
+        // Common vocabulary mapped to real GPT-2 IDs
+        val common = mapOf(
+            "the" to 464L, "be" to 307L, "to" to 284L, "of" to 259L,
+            "and" to 290L, "a" to 64L, "in" to 287L, "that" to 326L,
+            "have" to 423L, "i" to 72L, "it" to 314L, "for" to 337L,
+            "not" to 407L, "on" to 319L, "with" to 351L, "he" to 339L,
+            "as" to 271L, "you" to 345L, "do" to 466L, "at" to 262L,
+            "this" to 341L, "but" to 475L, "his" to 465L, "by" to 534L,
+            "from" to 422L, "they" to 612L, "we" to 492L, "say" to 910L,
+            "her" to 502L, "she" to 703L, "or" to 393L, "an" to 281L,
+            "will" to 481L, "my" to 616L, "one" to 530L, "all" to 477L,
+            "would" to 561L, "there" to 612L, "their" to 511L, "what" to 644L,
+            "is" to 318L, "can" to 460L, "see" to 766L, "describe" to 11051L,
+            "image" to 3012L, "picture" to 4377L, "photo" to 4349L,
+            "tell" to 980L, "me" to 502L, "color" to 3122L, "red" to 2266L,
+            "blue" to 3635L, "green" to 4015L, "black" to 2844L, "white" to 2441L,
+            "car" to 1097L, "dog" to 3290L, "cat" to 3797L, "person" to 1048L,
+            "man" to 582L, "woman" to 2415L, "tree" to 5509L, "sky" to 5524L
+        )
+
+        common.forEach { (word, id) -> reg(word, id) }
+    }
+
+    fun encode(text: String): LongArray {
+        val tokens = mutableListOf<Long>()
+        val words = text.lowercase().replace("?", " ?").replace(".", " .").split(Regex("\\s+"))
+
+        for (word in words) {
+            if (word.isEmpty()) continue
+            // Safe hash fallback for unknown words keeping them in valid range
+            val tokenId = vocab[word] ?: (word.hashCode().toLong() and 0x7FFFFFFF) % 40000
+            tokens.add(tokenId)
+        }
+
+        return tokens.toLongArray()
+    }
+
+    fun decode(tokens: LongArray): String {
+        return tokens.toList()
+            .map { id -> reverseVocab[id] ?: " " }
+            .joinToString("")
+            .replace("  ", " ")
+    }
+
+    fun formatPrompt(question: String): String {
+        return "<image>\n\nQuestion: $question\n\nAnswer:"
+    }
+}
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ai\VLMInterface.kt
+# LINES: 27
+================================================================================
+
+package com.anurag.visionqa.ai
+
+import android.graphics.Bitmap
+
+interface VLMInterface {
+    suspend fun initialize(): Boolean
+    fun isReady(): Boolean
+
+    // UPDATE THIS FUNCTION SIGNATURE
+    suspend fun chat(
+        image: Bitmap,
+        question: String,
+        systemPrompt: String? = null, // <-- ADD THIS LINE
+        conversationHistory: List<Pair<String, String>> = emptyList(),
+        onTokenGenerated: ((String) -> Unit)? = null
+    ): String
+
+    fun getModelInfo(): ModelInfo
+    fun cleanup()
+}
+
+data class ModelInfo(
+    val name: String,
+    val size: String,
+    val speed: String,
+    val quality: String
+)
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\camera\CameraController.kt
+# LINES: 46
+================================================================================
+
+package com.anurag.visionqa.camera
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.core.content.ContextCompat
+import java.io.File
+
+class CameraController(
+    private val imageCapture: ImageCapture
+) {
+    fun capture(
+        context: Context,
+        onResult: (Bitmap) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val photoFile = File(
+            context.cacheDir,
+            "capture_${System.currentTimeMillis()}.jpg"
+        )
+
+        val outputOptions = ImageCapture.OutputFileOptions
+            .Builder(photoFile)
+            .build()
+
+        imageCapture.takePicture(
+            outputOptions,
+            ContextCompat.getMainExecutor(context),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(
+                    outputFileResults: ImageCapture.OutputFileResults
+                ) {
+                    val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
+                    onResult(bitmap)
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    onError(exception.message ?: "Capture failed")
+                }
+            }
+        )
+    }
+}
+
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\MainActivity.kt
+# LINES: 37
+================================================================================
+
+package com.anurag.visionqa
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.anurag.visionqa.ui.VisionQAScreen
+
+class MainActivity : ComponentActivity() {
+
+    private val requestPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                setContent { VisionQAScreen() }
+            } else {
+                finish()
+            }
+        }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            setContent { VisionQAScreen() }
+        } else {
+            requestPermission.launch(Manifest.permission.CAMERA)
+        }
+    }
+}
+
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ui\CameraPreview.kt
+# LINES: 54
+================================================================================
+
+package com.anurag.visionqa.ui
+
+import androidx.camera.core.*
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+
+@Composable
+fun CameraPreview(
+    modifier: Modifier = Modifier,
+    onImageCaptureReady: (ImageCapture) -> Unit
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    AndroidView(
+        modifier = modifier,
+        factory = { ctx ->
+            val previewView = PreviewView(ctx)
+
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+            cameraProviderFuture.addListener({
+                val cameraProvider = cameraProviderFuture.get()
+
+                val preview = Preview.Builder().build().apply {
+                    setSurfaceProvider(previewView.surfaceProvider)
+                }
+
+                val imageCapture = ImageCapture.Builder()
+                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                    .build()
+
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(
+                    lifecycleOwner,
+                    CameraSelector.DEFAULT_BACK_CAMERA,
+                    preview,
+                    imageCapture
+                )
+
+                onImageCaptureReady(imageCapture)
+
+            }, ContextCompat.getMainExecutor(ctx))
+
+            previewView
+        }
+    )
+}
+
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ui\SpeechManager.kt
+# LINES: 101
+================================================================================
+
+package com.anurag.visionqa.ui
+
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.speech.tts.TextToSpeech
+import android.util.Log
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import java.util.Locale
+
+class SpeechManager(context: Context) {
+
+    private var speechRecognizer: SpeechRecognizer? = SpeechRecognizer.createSpeechRecognizer(context)
+    private var tts: TextToSpeech? = null
+    private var isTtsReady = false
+
+    init {
+        tts = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                val result = tts?.setLanguage(Locale.US)
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    Log.e("SpeechManager", "TTS Language not supported")
+                } else {
+                    isTtsReady = true
+                }
+            } else {
+                Log.e("SpeechManager", "TTS Initialization failed")
+            }
+        }
+    }
+
+    // --- TEXT TO SPEECH (OUTPUT) ---
+    fun speak(text: String) {
+        if (isTtsReady) {
+            // Stop any previous speech
+            tts?.stop()
+            // Queue the new text
+            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+        }
+    }
+
+    fun stopSpeaking() {
+        tts?.stop()
+    }
+
+    // --- SPEECH TO TEXT (INPUT) ---
+    fun startListening(): Flow<String> = callbackFlow {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        }
+
+        val listener = object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) {}
+            override fun onBeginningOfSpeech() {}
+            override fun onRmsChanged(rmsdB: Float) {}
+            override fun onBufferReceived(buffer: ByteArray?) {}
+            override fun onEndOfSpeech() {}
+            override fun onError(error: Int) {
+                // close() // Don't close immediately on error to allow retry logic if needed
+            }
+
+            override fun onResults(results: Bundle?) {
+                val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                if (!matches.isNullOrEmpty()) {
+                    trySend(matches[0]) // Send the final recognized text
+                }
+                close()
+            }
+
+            override fun onPartialResults(partialResults: Bundle?) {
+                val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                if (!matches.isNullOrEmpty()) {
+                    trySend(matches[0]) // Send partial updates (live typing effect)
+                }
+            }
+
+            override fun onEvent(eventType: Int, params: Bundle?) {}
+        }
+
+        speechRecognizer?.setRecognitionListener(listener)
+        speechRecognizer?.startListening(intent)
+
+        awaitClose {
+            // Cleanup when the flow is cancelled
+            // We don't stop the recognizer here to avoid cutting off too early in some flows
+        }
+    }
+
+    fun cleanup() {
+        speechRecognizer?.destroy()
+        tts?.stop()
+        tts?.shutdown()
+    }
+}
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ui\theme\Color.kt
+# LINES: 11
+================================================================================
+
+package com.anurag.visionqa.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+val Purple80 = Color(0xFFD0BCFF)
+val PurpleGrey80 = Color(0xFFCCC2DC)
+val Pink80 = Color(0xFFEFB8C8)
+
+val Purple40 = Color(0xFF6650a4)
+val PurpleGrey40 = Color(0xFF625b71)
+val Pink40 = Color(0xFF7D5260)
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ui\theme\Theme.kt
+# LINES: 58
+================================================================================
+
+package com.anurag.visionqa.ui.theme
+
+import android.app.Activity
+import android.os.Build
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+
+private val DarkColorScheme = darkColorScheme(
+    primary = Purple80,
+    secondary = PurpleGrey80,
+    tertiary = Pink80
+)
+
+private val LightColorScheme = lightColorScheme(
+    primary = Purple40,
+    secondary = PurpleGrey40,
+    tertiary = Pink40
+
+    /* Other default colors to override
+    background = Color(0xFFFFFBFE),
+    surface = Color(0xFFFFFBFE),
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onTertiary = Color.White,
+    onBackground = Color(0xFF1C1B1F),
+    onSurface = Color(0xFF1C1B1F),
+    */
+)
+
+@Composable
+fun VisionQATheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    // Dynamic color is available on Android 12+
+    dynamicColor: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    val colorScheme = when {
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            val context = LocalContext.current
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+
+        darkTheme -> DarkColorScheme
+        else -> LightColorScheme
+    }
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = Typography,
+        content = content
+    )
+}
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ui\theme\Type.kt
+# LINES: 34
+================================================================================
+
+package com.anurag.visionqa.ui.theme
+
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+
+// Set of Material typography styles to start with
+val Typography = Typography(
+    bodyLarge = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.5.sp
+    )
+    /* Other default text styles to override
+    titleLarge = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
+        letterSpacing = 0.sp
+    ),
+    labelSmall = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Medium,
+        fontSize = 11.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.5.sp
+    )
+    */
+)
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ui\VisionQAScreen.kt
+# LINES: 481
+================================================================================
+
+package com.anurag.visionqa.ui
+
+import android.Manifest
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageFormat
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import com.anurag.visionqa.ai.MoondreamVLM
+import com.anurag.visionqa.ai.OcrHelper
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
+import java.util.UUID
+
+// ---------------------------------------------------------------------------
+// Data models
+// ---------------------------------------------------------------------------
+
+data class ChatMessage(
+    val id: String = UUID.randomUUID().toString(),
+    val text: String,
+    val isUser: Boolean,
+    val image: Bitmap? = null,
+    val isLoading: Boolean = false
+)
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+fun imageProxyToBitmap(image: ImageProxy): Bitmap {
+    return when (image.format) {
+        ImageFormat.JPEG -> {
+            val buffer: ByteBuffer = image.planes[0].buffer
+            val bytes = ByteArray(buffer.remaining())
+            buffer.get(bytes)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        }
+        ImageFormat.YUV_420_888 -> {
+            val yBuffer = image.planes[0].buffer
+            val uBuffer = image.planes[1].buffer
+            val vBuffer = image.planes[2].buffer
+            val nv21 = ByteArray(yBuffer.remaining() + uBuffer.remaining() + vBuffer.remaining())
+            yBuffer.get(nv21, 0, yBuffer.remaining())
+            vBuffer.get(nv21, yBuffer.remaining(), vBuffer.remaining())
+            uBuffer.get(nv21, yBuffer.remaining() + vBuffer.remaining(), uBuffer.remaining())
+            val yuvImage = android.graphics.YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
+            val out = ByteArrayOutputStream()
+            yuvImage.compressToJpeg(android.graphics.Rect(0, 0, image.width, image.height), 100, out)
+            val imageBytes = out.toByteArray()
+            BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+        }
+        else -> throw IllegalArgumentException("Unsupported format: ${image.format}")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// UI components
+// ---------------------------------------------------------------------------
+
+@Composable
+fun ShimmerBubble() {
+    val shimmerColors = listOf(
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+    )
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val translateAnim by transition.animateFloat(
+        initialValue = 0f, targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = "shimmer_anim"
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(0.6f)
+            .height(50.dp)
+            .background(
+                Brush.linearGradient(shimmerColors, Offset(10f, 10f), Offset(translateAnim, translateAnim)),
+                RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp)
+            )
+    )
+}
+
+@Composable
+fun ChatBubble(
+    message: ChatMessage,
+    loadingPhase: String,
+    onSpeakClick: (String) -> Unit
+) {
+    val alignment  = if (message.isUser) Alignment.End else Alignment.Start
+    val bubbleColor = if (message.isUser) MaterialTheme.colorScheme.primaryContainer
+    else MaterialTheme.colorScheme.surfaceVariant
+    val textColor   = if (message.isUser) MaterialTheme.colorScheme.onPrimaryContainer
+    else MaterialTheme.colorScheme.onSurfaceVariant
+    val shape = if (message.isUser) RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp)
+    else RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp)
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 8.dp),
+        horizontalAlignment = alignment
+    ) {
+        if (message.isLoading) {
+            ShimmerBubble()
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "🧠 $loadingPhase",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            )
+        } else {
+            Surface(color = bubbleColor, shape = shape, shadowElevation = 1.dp) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    message.image?.let { bmp ->
+                        Image(
+                            bitmap = bmp.asImageBitmap(),
+                            contentDescription = "User Image",
+                            modifier = Modifier.height(150.dp).clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    if (message.text.isNotEmpty()) {
+                        Text(text = message.text, color = textColor, style = MaterialTheme.typography.bodyLarge)
+                        if (!message.isUser) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            IconButton(
+                                onClick = { onSpeakClick(message.text) },
+                                modifier = Modifier.size(24.dp).align(Alignment.End)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.VolumeUp,
+                                    contentDescription = "Read Aloud",
+                                    tint = textColor.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Main screen
+// ---------------------------------------------------------------------------
+
+@Composable
+fun VisionQAScreen() {
+    val context      = LocalContext.current
+    val scope        = rememberCoroutineScope()
+    val vlm          = remember { MoondreamVLM(context) }
+    val ocrHelper    = remember { OcrHelper() }
+
+    val speechManager = remember { SpeechManager(context) }
+
+    var imageCapture    by remember { mutableStateOf<ImageCapture?>(null) }
+    var capturedBitmap  by remember { mutableStateOf<Bitmap?>(null) }
+    // OCR runs once at capture time and is reused across all questions on the same image
+    var cachedOcrResult by remember { mutableStateOf<OcrHelper.OcrResult?>(null) }
+
+    var questionText  by remember { mutableStateOf("") }
+    var messages      by remember { mutableStateOf(listOf<ChatMessage>()) }
+    var isProcessing  by remember { mutableStateOf(false) }
+    var isInitializing by remember { mutableStateOf(true) }
+    var isListening   by remember { mutableStateOf(false) }
+    var downloadProgress by remember { mutableStateOf("") }
+    var inferenceJob  by remember { mutableStateOf<Job?>(null) }
+    var loadingPhase  by remember { mutableStateOf("Initializing...") }
+
+    val listState = rememberLazyListState()
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            isListening = true
+            scope.launch {
+                speechManager.startListening().collect { text -> questionText = text }
+                isListening = false
+            }
+        }
+    }
+
+    LaunchedEffect(messages.size, messages.lastOrNull()?.text?.length) {
+        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
+    }
+
+    if (isProcessing) {
+        LaunchedEffect(Unit) {
+            val phases = listOf(
+                "Extracting visual features...",
+                "Analysing context...",
+                "Formulating response..."
+            )
+            var i = 0
+            while (true) { loadingPhase = phases[i++ % phases.size]; delay(4000) }
+        }
+    }
+
+    // Init VLM on launch
+    LaunchedEffect(Unit) {
+        messages = listOf(ChatMessage(text = "🚀 Initializing Moondream2...\nChecking models (~1.6GB)...", isUser = false))
+        scope.launch {
+            try {
+                val ok = vlm.initialize { msg, prog -> downloadProgress = "$msg ($prog%)" }
+                messages = if (ok)
+                    listOf(ChatMessage(text = "✅ Ready!\n📸 Capture an image to begin.", isUser = false))
+                else
+                    listOf(ChatMessage(text = "❌ Failed to initialize.", isUser = false))
+                isInitializing = false
+                downloadProgress = ""
+            } catch (e: Exception) {
+                messages = listOf(ChatMessage(text = "❌ Error: ${e.message}", isUser = false))
+                isInitializing = false
+            }
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+
+        // Camera / captured image panel
+        Box(modifier = Modifier.weight(0.35f).fillMaxWidth()) {
+            if (capturedBitmap != null) {
+                Image(
+                    bitmap = capturedBitmap!!.asImageBitmap(),
+                    contentDescription = "Captured Frame",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
+
+                // OCR badge — visible after capture if text was detected
+                if (cachedOcrResult != null) {
+                    Surface(
+                        modifier = Modifier.align(Alignment.BottomStart).padding(8.dp),
+                        color = Color.Black.copy(alpha = 0.65f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "📝 Text detected",
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            } else {
+                CameraPreview(modifier = Modifier.fillMaxSize(), onImageCaptureReady = { imageCapture = it })
+            }
+        }
+
+        if (downloadProgress.isNotEmpty()) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+            Text(
+                text = downloadProgress,
+                modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally),
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.weight(0.65f).fillMaxWidth().padding(horizontal = 8.dp),
+            contentPadding = PaddingValues(vertical = 16.dp)
+        ) {
+            items(messages) { msg ->
+                ChatBubble(message = msg, loadingPhase = loadingPhase, onSpeakClick = { speechManager.speak(it) })
+            }
+        }
+
+        // Input panel
+        Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 4.dp, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(12.dp)) {
+
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = questionText,
+                        onValueChange = { questionText = it },
+                        label = { Text("Ask about the image...") },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isProcessing && !isInitializing,
+                        maxLines = 3,
+                        shape = RoundedCornerShape(16.dp),
+                        trailingIcon = {
+                            IconButton(onClick = {
+                                if (isListening) isListening = false
+                                else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }) {
+                                Icon(
+                                    imageVector = if (isListening) Icons.Default.Stop else Icons.Default.Mic,
+                                    contentDescription = "Voice Input",
+                                    tint = if (isListening) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (isProcessing) {
+                    Button(
+                        onClick = {
+                            inferenceJob?.cancel()
+                            isProcessing = false
+                            messages = messages.map {
+                                if (it.isLoading) it.copy(isLoading = false, text = "⚠️ Stopped.") else it
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Stop Generation") }
+
+                } else {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+
+                        // Capture / Retake button
+                        Button(
+                            modifier = Modifier.weight(1f),
+                            enabled = !isInitializing,
+                            onClick = {
+                                if (capturedBitmap != null) {
+                                    // Clear everything for the new image
+                                    capturedBitmap = null
+                                    cachedOcrResult = null
+                                    vlm.resetChat()        // clears KV cache + image feature cache
+                                    messages = emptyList()
+                                } else {
+                                    val capture = imageCapture ?: return@Button
+                                    capture.takePicture(
+                                        ContextCompat.getMainExecutor(context),
+                                        object : ImageCapture.OnImageCapturedCallback() {
+                                            override fun onCaptureSuccess(image: ImageProxy) {
+                                                try {
+                                                    val bmp = imageProxyToBitmap(image)
+                                                    capturedBitmap = bmp
+
+                                                    // Run OCR in background immediately after capture.
+                                                    scope.launch {
+                                                        cachedOcrResult = try {
+                                                            ocrHelper.extractText(bmp)
+                                                        } catch (e: Exception) {
+                                                            null
+                                                        }
+                                                    }
+                                                } finally {
+                                                    image.close()
+                                                }
+                                            }
+                                            override fun onError(exc: ImageCaptureException) {
+                                                messages = messages + ChatMessage(
+                                                    text = "❌ Camera error: ${exc.message}", isUser = false
+                                                )
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        ) { Text(if (capturedBitmap != null) "Retake Image" else "Capture") }
+
+                        // Send button
+                        Button(
+                            modifier = Modifier.weight(1f),
+                            enabled = capturedBitmap != null && questionText.isNotBlank(),
+                            onClick = {
+                                val bitmap   = capturedBitmap!!
+                                val question = questionText.trim()
+                                questionText = ""
+                                isProcessing = true
+
+                                vlm.clearTextMemory()
+
+                                val isFirstQuestion = messages.none { !it.isUser }
+                                messages = messages + ChatMessage(
+                                    text = question, isUser = true,
+                                    image = if (isFirstQuestion) bitmap else null
+                                )
+
+                                val aiMsgId = UUID.randomUUID().toString()
+                                messages = messages + ChatMessage(
+                                    id = aiMsgId, text = "", isUser = false, isLoading = true
+                                )
+
+                                inferenceJob = scope.launch {
+                                    try {
+                                        // 1. Structure the OCR context using the spatial data from ML Kit
+                                        val structuredOcrContext = cachedOcrResult?.let { result ->
+                                            if (result.structuredLines.isNotEmpty()) {
+                                                // Joins the left/right parts with spaces, and rows with newlines
+                                                result.structuredLines.joinToString("\n") { it.fullText() }
+                                            } else {
+                                                result.rawText
+                                            }
+                                        }
+
+                                        // 2. Feed directly into the VLM (No middleman handler)
+                                        val answer = vlm.chatWithOcr(
+                                            image    = bitmap,
+                                            question = question,
+                                            ocrText  = structuredOcrContext
+                                        ) { token ->
+                                            messages = messages.map {
+                                                if (it.id == aiMsgId)
+                                                    it.copy(isLoading = false, text = it.text + token)
+                                                else it
+                                            }
+                                        }
+
+                                        android.util.Log.i("VISION_RESPONSE", "🤖 MODEL ANSWER:\n$answer")
+
+                                        messages = messages.map {
+                                            if (it.id == aiMsgId && it.text.isEmpty())
+                                                it.copy(isLoading = false, text = answer)
+                                            else it
+                                        }
+
+                                    } catch (e: CancellationException) {
+                                        // User tapped Stop
+                                    } catch (e: Exception) {
+                                        messages = messages.map {
+                                            if (it.id == aiMsgId)
+                                                it.copy(isLoading = false, text = "❌ Error: ${e.message}")
+                                            else it
+                                        }
+                                    } finally {
+                                        isProcessing = false
+                                    }
+                                }
+                            }
+                        ) { Text("Send") }
+                    }
+                }
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            vlm.cleanup()
+            ocrHelper.close()
+            speechManager.cleanup()
+        }
+    }
+}
+
+================================================================================
+# FILE: app\src\test\java\com\anurag\visionqa\ExampleUnitTest.kt
+# LINES: 17
+================================================================================
+
+package com.anurag.visionqa
+
+import org.junit.Test
+
+import org.junit.Assert.*
+
+/**
+ * Example local unit test, which will execute on the development machine (host).
+ *
+ * See [testing documentation](http://d.android.com/tools/testing).
+ */
+class ExampleUnitTest {
+    @Test
+    fun addition_isCorrect() {
+        assertEquals(4, 2 + 2)
+    }
+}
+
+================================================================================
+# FILE: build.gradle.kts
+# LINES: 5
+================================================================================
+
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+plugins {
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.kotlin.compose) apply false
+}
+
+================================================================================
+# FILE: gradle\libs.versions.toml
+# LINES: 32
+================================================================================
+
+[versions]
+agp = "9.0.0"
+coreKtx = "1.17.0"
+junit = "4.13.2"
+junitVersion = "1.3.0"
+espressoCore = "3.7.0"
+lifecycleRuntimeKtx = "2.10.0"
+activityCompose = "1.12.3"
+kotlin = "2.0.21"
+composeBom = "2024.09.00"
+
+[libraries]
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+
+
+
+================================================================================
+# FILE: gradle.properties
+# LINES: 23
+================================================================================
+
+# Project-wide Gradle settings.
+# IDE (e.g. Android Studio) users:
+# Gradle settings configured through the IDE *will override*
+# any settings specified in this file.
+# For more details on how to configure your build environment visit
+# http://www.gradle.org/docs/current/userguide/build_environment.html
+# Specifies the JVM arguments used for the daemon process.
+# The setting is particularly useful for tweaking memory settings.
+org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+# When configured, Gradle will run in incubating parallel mode.
+# This option should only be used with decoupled projects. For more details, visit
+# https://developer.android.com/r/tools/gradle-multi-project-decoupled-projects
+# org.gradle.parallel=true
+# AndroidX package structure to make it clearer which packages are bundled with the
+# Android operating system, and which are packaged with your app's APK
+# https://developer.android.com/topic/libraries/support-library/androidx-rn
+android.useAndroidX=true
+# Kotlin code style for this project: "official" or "obsolete":
+kotlin.code.style=official
+# Enables namespacing of each library's R class so that its R class includes only the
+# resources declared in the library itself and none from the library's dependencies,
+# thereby reducing the size of the R class for that library
+android.nonTransitiveRClass=true
+
+================================================================================
+# FILE: local.properties
+# LINES: 10
+================================================================================
+
+## This file is automatically generated by Android Studio.
+# Do not modify this file -- YOUR CHANGES WILL BE ERASED!
+#
+# This file should *NOT* be checked into Version Control Systems,
+# as it contains information specific to your local configuration.
+#
+# Location of the SDK. This is only used by Gradle.
+# For customization when using a Version Control System, please read the
+# header note.
+sdk.dir=C\:\\Users\\anura\\AppData\\Local\\Android\\Sdk
+
+================================================================================
+# FILE: settings.gradle.kts
+# LINES: 24
+================================================================================
+
+pluginManagement {
+    repositories {
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "VisionQA"
+include(":app")
+
+

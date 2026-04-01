@@ -31,61 +31,28 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
     companion object {
         private const val TAG = "MoondreamVLM"
         private const val IMAGE_SIZE = 378
-        private const val MAX_NEW_TOKENS = 80 // Visual-only answers are short; 512 was wasteful
-        // Repetition penalty: penalises tokens already generated.
-        // 1.0 = off. Small quantized models need a stronger penalty (1.5)
-        // because their logit distributions are noisier than full-size models.
+        private const val MAX_NEW_TOKENS = 80
         private const val REPETITION_PENALTY = 1.15f
-
-        // Temperature for sampling. Small quantized models hallucinate badly
-        // at temperatures above ~0.4. Keep this low — we rely on the repetition
-        // penalty (not temperature) to prevent loops.
         private const val TEMPERATURE = 0.0f
-
-        // Top-k: only consider this many candidate tokens per step.
-        // 5 is tight enough to prevent hallucinated names on a q4 model
-        // while still allowing natural variation in phrasing.
         private const val TOP_K = 5
     }
 
-    suspend fun initialize(onProgress: (String, Int) -> Unit = { _, _ -> }): Boolean =
+    // Standard initialization required by VLMInterface
+    override suspend fun initialize(): Boolean = initialize { _, _ -> }
+
+    // Progress-aware initialization for UI reporting
+    override suspend fun initialize(onProgress: (String, Int) -> Unit): Boolean =
         withContext(Dispatchers.IO) {
             try {
-                Log.d(TAG, "=== MOONDREAM INIT ===")
+                Log.d(TAG, "=== MOONDREAM FALLBACK INIT ===")
                 if (!downloader.downloadIfNeeded { msg, prog -> onProgress(msg, prog) })
                     return@withContext false
 
                 tokenizer = RealTokenizer(context, downloader.getTokenizerPath())
-
-                // ---- TOKENIZER SANITY CHECK ----
-                // In Logcat filter by "MoondreamVLM" and look for:
-                //   selfTest: encode('Hello world')=[15496, 995] decoded='Hello world'
-                // If you see [0,0] or empty list → tokenizer.json didn't load properly.
                 Log.i(TAG, "Tokenizer check: ${tokenizer!!.selfTest()}")
 
                 ortEnv = OrtEnvironment.getEnvironment()
 
-//                val options = OrtSession.SessionOptions().apply {
-//                    setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
-//                    try {
-//                        // 1. Try Hardware Acceleration (NNAPI) first!
-//                        addNnapi()
-//                        Log.d(TAG, "✅ NNAPI (Hardware Acceleration) Enabled!")
-//                    } catch (e: Exception) {
-//                        Log.w(TAG, "NNAPI unavailable, falling back to CPU: ${e.message}")
-//                        // 2. Fall back to XNNPACK if NNAPI fails
-//                        try {
-//                            addXnnpack(mapOf("intra_op_num_threads" to "4"))
-//                        } catch (e2: Exception) {
-//                            setIntraOpNumThreads(4)
-//                        }
-//                    }
-//                }
-
-
-                // Use big cores only. Most Snapdragon SoCs have 4 big cores (Cortex-A7xx).
-                // Using efficiency cores for transformer matmul actually slows things down
-                // because their cache is too small and they stall on the weight tensors.
                 val bigCores = Runtime.getRuntime().availableProcessors().coerceIn(2, 4)
 
                 val options = OrtSession.SessionOptions().apply {
@@ -110,7 +77,6 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
             }
         }
 
-    override suspend fun initialize(): Boolean = initialize { _, _ -> }
     override fun isReady(): Boolean = ready
 
     fun resetChat() {
@@ -128,33 +94,30 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
         lastSessionResult = null
         persistentKVCache = null
         currentSequenceLength = 0
-        // Notice we DO NOT set cachedImageFeatures to null here.
-        // This keeps the image processing instant!
         Log.d(TAG, "🧹 Text memory wiped. Image features retained.")
     }
 
-    // Standard VLMInterface chat (no OCR text)
+    // Unified entry point implementation
     override suspend fun chat(
         image: Bitmap,
         question: String,
         systemPrompt: String?,
         conversationHistory: List<Pair<String, String>>,
         onTokenGenerated: ((String) -> Unit)?
-    ): String = chatWithOcr(image, question, null, null, onTokenGenerated)
+    ): String = chatWithOcr(image, question, null, systemPrompt, onTokenGenerated)
 
     /**
-     * Primary entry point. Pass [ocrText] from OcrHelper if available —
-     * it gets injected into the prompt so the model reasons about accurate
-     * text instead of guessing from blurry 378×378 pixels.
+     * Fallback implementation using ONNX Runtime.
+     * Injected OCR text is handled here if available.
      */
-    suspend fun chatWithOcr(
+    private suspend fun chatWithOcr(
         image: Bitmap,
         question: String,
         ocrText: String?,
         systemPrompt: String? = null,
         onTokenGenerated: ((String) -> Unit)? = null
     ): String = withContext(Dispatchers.IO) {
-        if (!ready) return@withContext "Not initialized"
+        if (!ready) return@withContext "Fallback model not initialized"
 
         if (currentSequenceLength > 1500) {
             Log.w(TAG, "⚠️ Context too long, resetting.")
@@ -162,14 +125,12 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
         }
 
         try {
-            // Intercept identity questions — moondream2 has no instruction-tuning
-            // for identity and will always invent a name from training data.
-            // No prompt wording can reliably prevent this, so we short-circuit.
             val lq = question.trim().lowercase()
             val isIdentityQuestion = (lq.contains("who are you") ||
                     lq.contains("what are you") ||
                     (lq.contains("your name") && (lq.contains("what") || lq.contains("tell"))) ||
                     lq == "your name?" || lq == "name?")
+
             if (isIdentityQuestion) {
                 val reply = "I am an AI assistant. I do not have a name."
                 onTokenGenerated?.invoke(reply)
@@ -177,7 +138,6 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
             }
 
             val isFollowUp = persistentKVCache != null
-
             val prompt = tokenizer!!.formatPrompt(
                 question     = question,
                 ocrText      = ocrText,
@@ -185,17 +145,8 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
                 isFollowUp   = isFollowUp
             )
 
-            Log.i("VISION_PROMPT", "=== EXACT PROMPT GOING TO MODEL ===\n$prompt")
-
             val inputIds = tokenizer!!.encode(prompt)
-
-            // Log the first few token IDs so you can verify in Logcat
-            Log.d(TAG, "Encoded ${inputIds.size} tokens, first 10: ${inputIds.take(10).toList()}")
-
-            if (inputIds.isEmpty()) {
-                Log.e(TAG, "❌ encode() returned empty! Check tokenizer selfTest in Logcat.")
-                return@withContext "Tokenizer error — see Logcat."
-            }
+            if (inputIds.isEmpty()) return@withContext "Tokenizer error — see Logcat."
 
             val textEmbeds  = embedText(inputIds)
             val finalEmbeds = if (!isFollowUp) {
@@ -214,16 +165,8 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Image encoding with cache
-    // -----------------------------------------------------------------------
-
     private fun getOrEncodeImage(bitmap: Bitmap): Array<FloatArray> {
-        if (cachedImageBitmap === bitmap && cachedImageFeatures != null) {
-            Log.d(TAG, "♻️ Reusing cached image features.")
-            return cachedImageFeatures!!
-        }
-        Log.d(TAG, "🖼️ Running vision encoder...")
+        if (cachedImageBitmap === bitmap && cachedImageFeatures != null) return cachedImageFeatures!!
         val features = encodeImage(bitmap)
         cachedImageFeatures = features
         cachedImageBitmap = bitmap
@@ -251,10 +194,6 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
         return features
     }
 
-    // -----------------------------------------------------------------------
-    // Text embedding
-    // -----------------------------------------------------------------------
-
     private fun embedText(inputIds: IntArray): Array<FloatArray> {
         val longs  = LongArray(inputIds.size) { inputIds[it].toLong() }
         val tensor = OnnxTensor.createTensor(
@@ -267,10 +206,6 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
     }
 
     private fun combineEmbeddings(a: Array<FloatArray>, b: Array<FloatArray>) = a + b
-
-    // -----------------------------------------------------------------------
-    // Autoregressive generation with KV cache
-    // -----------------------------------------------------------------------
 
     private fun generateWithKVCache(
         embeddings: Array<FloatArray>,
@@ -334,10 +269,9 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
                 val rawLogits: FloatArray = when (logitsRaw) {
                     is Array<*> -> (logitsRaw[0] as Array<*>).last() as FloatArray
                     is FloatArray -> logitsRaw
-                    else -> throw Exception("Unexpected logits: ${logitsRaw?.javaClass}")
+                    else -> throw Exception("Unexpected logits type")
                 }
 
-                // Apply repetition penalty and temperature before sampling.
                 val logits = applyRepetitionPenalty(rawLogits, generated, REPETITION_PENALTY)
                 val tokenId = sampleWithTemperature(logits, TEMPERATURE)
 
@@ -346,7 +280,6 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
                 generated.add(tokenId)
                 onToken?.invoke(tokenizer!!.decode(intArrayOf(tokenId)))
 
-                // --- Update KV cache ---
                 val newKV = mutableMapOf<String, OnnxTensor>()
                 for (l in 0 until numLayers) {
                     newKV["past_key_values.$l.key"]   = out.get("present.$l.key").get()   as OnnxTensor
@@ -375,12 +308,10 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
                 inputs.putAll(newKV)
 
             } catch (e: Exception) {
-                Log.e(TAG, "Step $step error: ${e.message}")
                 break
             }
         }
 
-        // Persist KV cache for next turn
         lastSessionResult?.close(); lastSessionResult = prevOut
         persistentKVCache = mutableMapOf()
         if (lastSessionResult != null) {
@@ -395,22 +326,14 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
         return tokenizer!!.decode(generated.toIntArray())
     }
 
-    // -----------------------------------------------------------------------
-    // Misc
-    // -----------------------------------------------------------------------
+    // Matches ModelInfo fields: name, size, type, quality
+    override fun getModelInfo(): ModelInfo = ModelInfo(
+        name    = "Moondream2 ONNX",
+        size    = "~1.5GB",
+        speed   = "Slow (CPU)",
+        quality = "Basic"
+    )
 
-    override fun getModelInfo(): ModelInfo = ModelInfo("Moondream2 ONNX", "~1.5GB", "Good", "Good")
-
-    // -----------------------------------------------------------------------
-    // Sampling helpers
-    // -----------------------------------------------------------------------
-
-    /**
-     * Applies a repetition penalty to logits.
-     * For every token that has already been generated, its logit is divided
-     * by [penalty] (if positive) or multiplied (if negative), making it
-     * less likely to appear again. Standard implementation from HuggingFace.
-     */
     private fun applyRepetitionPenalty(
         logits: FloatArray,
         generatedTokens: List<Int>,
@@ -420,58 +343,23 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
         val result = logits.copyOf()
         for (tokenId in generatedTokens.toSet()) {
             if (tokenId < result.size) {
-                // Do NOT penalize digit/punctuation tokens (IDs 15–57 in GPT-2 vocab).
-                // Price lists legitimately repeat "210", "250", "/-" many times.
-                // Penalizing them was causing the model to refuse printing numbers.
                 if (tokenId in 15..57) continue
-                result[tokenId] = if (result[tokenId] > 0f)
-                    result[tokenId] / penalty
-                else
-                    result[tokenId] * penalty
+                result[tokenId] = if (result[tokenId] > 0f) result[tokenId] / penalty else result[tokenId] * penalty
             }
         }
         return result
     }
-    /**
-     * Samples a token using temperature scaling.
-     * temperature = 1.0 → greedy argmax (deterministic, prone to loops).
-     * temperature < 1.0 → sharper distribution (more focused).
-     * temperature > 1.0 → flatter distribution (more random).
-     *
-     * We use top-k=40 filtering before sampling so extremely low-probability
-     * tokens (garbage, hallucinations) are never sampled.
-     */
+
     private fun sampleWithTemperature(logits: FloatArray, temperature: Float): Int {
-        if (temperature <= 0f) {
-            // Pure greedy
-            return logits.indices.maxByOrNull { logits[it] } ?: 0
-        }
-
-        // Scale logits by temperature
+        if (temperature <= 0f) return logits.indices.maxByOrNull { logits[it] } ?: 0
         val scaled = FloatArray(logits.size) { logits[it] / temperature }
-
-        // Top-k filtering: zero out everything outside top 40 tokens
-        val k = TOP_K
-        val topKIndices = scaled.indices
-            .sortedByDescending { scaled[it] }
-            .take(k)
-            .toSet()
-        val filtered = FloatArray(scaled.size) { i ->
-            if (i in topKIndices) scaled[i] else Float.NEGATIVE_INFINITY
-        }
-
-        // Softmax
+        val topKIndices = scaled.indices.sortedByDescending { scaled[it] }.take(TOP_K).toSet()
+        val filtered = FloatArray(scaled.size) { i -> if (i in topKIndices) scaled[i] else Float.NEGATIVE_INFINITY }
         val maxLogit = filtered.filter { it.isFinite() }.maxOrNull() ?: 0f
-        val exps = FloatArray(filtered.size) { i ->
-            if (filtered[i].isFinite()) Math.exp((filtered[i] - maxLogit).toDouble()).toFloat()
-            else 0f
-        }
+        val exps = FloatArray(filtered.size) { i -> if (filtered[i].isFinite()) Math.exp((filtered[i] - maxLogit).toDouble()).toFloat() else 0f }
         val sumExp = exps.sum()
         if (sumExp <= 0f) return logits.indices.maxByOrNull { logits[it] } ?: 0
-
         val probs = FloatArray(exps.size) { exps[it] / sumExp }
-
-        // Multinomial sample
         val r = Math.random().toFloat()
         var cumulative = 0f
         for (i in probs.indices) {
@@ -483,11 +371,10 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
 
     override fun cleanup() {
         resetChat()
-        visionSession?.close(); embedSession?.close()
-        decoderSession?.close(); ortEnv?.close()
+        visionSession?.close()
+        embedSession?.close()
+        decoderSession?.close()
+        ortEnv?.close()
         ready = false
     }
-
-    fun getDownloader(): MoondreamDownloader = downloader
-    fun testTokenizer(text: String): String = tokenizer?.selfTest() ?: "not loaded"
 }

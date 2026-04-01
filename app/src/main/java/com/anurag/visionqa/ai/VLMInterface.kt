@@ -4,13 +4,14 @@ import android.graphics.Bitmap
 
 interface VLMInterface {
     suspend fun initialize(): Boolean
+    // Overload for progress reporting during long loads
+    suspend fun initialize(onProgress: (String, Int) -> Unit): Boolean
     fun isReady(): Boolean
 
-    // UPDATE THIS FUNCTION SIGNATURE
     suspend fun chat(
         image: Bitmap,
         question: String,
-        systemPrompt: String? = null, // <-- ADD THIS LINE
+        systemPrompt: String? = null,
         conversationHistory: List<Pair<String, String>> = emptyList(),
         onTokenGenerated: ((String) -> Unit)? = null
     ): String

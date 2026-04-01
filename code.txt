@@ -28,12 +28,18 @@ PROJECT STRUCTURE: VisionQA
 │       │   ├── assets
 │       │   │   ├── model.tflite
 │       │   │   └── tokenizer.json
+│       │   ├── cpp
+│       │   │   ├── CMakeLists.txt
+│       │   │   └── llama_jni.cpp
 │       │   ├── java
 │       │   │   └── com
 │       │   │       └── anurag
 │       │   │           └── visionqa
 │       │   │               ├── ai
 │       │   │               │   ├── FakeAI.kt
+│       │   │               │   ├── LlamaJNI.kt
+│       │   │               │   ├── MiniCPMDownloader.kt
+│       │   │               │   ├── MiniCPMVLM.kt
 │       │   │               │   ├── MoondreamDownloader.kt
 │       │   │               │   ├── MoondreamVLM.kt
 │       │   │               │   ├── OcrHelper.kt
@@ -52,6 +58,13 @@ PROJECT STRUCTURE: VisionQA
 │       │   │                   │   ├── Theme.kt
 │       │   │                   │   └── Type.kt
 │       │   │                   └── VisionQAScreen.kt
+│       │   ├── jniLibs
+│       │   │   └── arm64-v8a
+│       │   │       ├── libggml-base.so
+│       │   │       ├── libggml-cpu.so
+│       │   │       ├── libggml.so
+│       │   │       ├── libllama.so
+│       │   │       └── libmtmd.so
 │       │   └── res
 │       │       ├── drawable
 │       │       │   ├── ic_launcher_background.xml
@@ -101,7 +114,7 @@ PROJECT STRUCTURE: VisionQA
 
 ================================================================================
 # FILE: app\build.gradle.kts
-# LINES: 91
+# LINES: 106
 ================================================================================
 
 plugins {
@@ -120,15 +133,30 @@ kotlin {
     namespace = "com.anurag.visionqa"
     compileSdk = 36
 
-    defaultConfig {
-        applicationId = "com.anurag.visionqa"
-        minSdk = 24
-        targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        defaultConfig {
+            applicationId = "com.anurag.visionqa"
+            minSdk = 24
+            targetSdk = 36
+            versionCode = 1
+            versionName = "1.0"
 
-        // Remove ndk and externalNativeBuild sections completely
-    }
+            ndk {
+                abiFilters += "arm64-v8a"
+            }
+            externalNativeBuild {
+                cmake {
+                    cppFlags += "-std=c++17"
+                    arguments += "-DANDROID_STL=c++_shared"
+                }
+            }
+        }
+
+        externalNativeBuild {
+            cmake {
+                path = file("src/main/cpp/CMakeLists.txt")
+                version = "3.22.1"
+            }
+        }
 
     buildTypes {
         release {
@@ -270,6 +298,384 @@ class ExampleInstrumentedTest {
 }
 
 ================================================================================
+# FILE: app\src\main\cpp\llama_jni.cpp
+# LINES: 372
+================================================================================
+
+#include <jni.h>
+#include <string>
+#include <vector>
+#include <mutex>
+#include <atomic>
+#include <cstring>
+#include <algorithm>
+#include <android/log.h>
+
+#include "llama.h"
+#include "mtmd.h"
+
+#define TAG "LlamaJNI"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+
+// ── Global state ──────────────────────────────────────────────────────────────
+static struct llama_model* g_model = nullptr;
+static struct llama_context* g_ctx   = nullptr;
+static struct mtmd_context* g_mtmd  = nullptr;
+static std::mutex            g_mutex;
+static std::atomic<bool>     g_abort{false};
+
+static void free_all() {
+    if (g_mtmd)  { mtmd_free(g_mtmd);         g_mtmd  = nullptr; }
+    if (g_ctx)   { llama_free(g_ctx);          g_ctx   = nullptr; }
+    if (g_model) { llama_model_free(g_model);  g_model = nullptr; }
+    LOGI("Model freed.");
+}
+
+extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM*, void*) {
+    llama_backend_init();
+    return JNI_VERSION_1_6;
+}
+
+extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM*, void*) {
+    llama_backend_free();
+}
+
+// ── loadModel ─────────────────────────────────────────────────────────────────
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_anurag_visionqa_ai_LlamaJNI_loadModel(
+        JNIEnv* env, jobject,
+        jstring modelPath, jstring mmprojPath,
+        jint nThreads, jint nCtx)
+{
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (g_model || g_ctx || g_mtmd) free_all();
+
+    const char* m_path = env->GetStringUTFChars(modelPath,  nullptr);
+    const char* v_path = env->GetStringUTFChars(mmprojPath, nullptr);
+
+    // 1. Load language model
+    llama_model_params mp = llama_model_default_params();
+    mp.n_gpu_layers = 0;
+    g_model = llama_model_load_from_file(m_path, mp);
+    if (!g_model) {
+        LOGE("llama_model_load_from_file failed.");
+        goto fail;
+    }
+
+    // 2. Create context
+    {
+        llama_context_params cp = llama_context_default_params();
+        cp.n_ctx           = 4096;
+        cp.n_batch         = 512;   // Claude's safety limit for Redmi RAM
+        cp.n_threads       = (uint32_t)nThreads;
+        cp.n_threads_batch = (uint32_t)nThreads;
+        g_ctx = llama_init_from_model(g_model, cp);
+    }
+    if (!g_ctx) {
+        LOGE("llama_init_from_model failed.");
+        goto fail;
+    }
+
+    // 3. Load vision encoder
+    {
+        struct mtmd_context_params mparams = mtmd_context_params_default();
+        mparams.n_threads = (int32_t)nThreads;
+        mparams.use_gpu   = false;
+        g_mtmd = mtmd_init_from_file(v_path, g_model, mparams);
+    }
+    if (!g_mtmd) {
+        LOGE("mtmd_init_from_file failed.");
+        goto fail;
+    }
+
+    env->ReleaseStringUTFChars(modelPath,  m_path);
+    env->ReleaseStringUTFChars(mmprojPath, v_path);
+    LOGI("✅ Model ready. ctx=4096 batch=512");
+    return JNI_TRUE;
+
+    fail:
+    free_all();
+    env->ReleaseStringUTFChars(modelPath,  m_path);
+    env->ReleaseStringUTFChars(mmprojPath, v_path);
+    return JNI_FALSE;
+}
+
+// ── Helper: decode a batch of tokens, returns false on failure ────────────────
+static bool decode_text_batch(
+        const llama_token* toks, size_t n_toks,
+        llama_pos& n_past, bool need_logits)
+{
+    const size_t BATCH_SIZE = 512;
+    for (size_t offset = 0; offset < n_toks; offset += BATCH_SIZE) {
+        size_t chunk = std::min(BATCH_SIZE, n_toks - offset);
+        bool last_chunk = (offset + chunk >= n_toks);
+
+        llama_batch batch = llama_batch_init((int32_t)chunk, 0, 1);
+        batch.n_tokens = (int32_t)chunk;
+        for (size_t j = 0; j < chunk; j++) {
+            batch.token[j]      = toks[offset + j];
+            batch.pos[j]        = n_past + (llama_pos)j;
+            batch.n_seq_id[j]   = 1;
+            batch.seq_id[j][0]  = 0;
+            batch.logits[j]     = (last_chunk && j == chunk - 1 && need_logits) ? 1 : 0;
+        }
+
+        int ret = llama_decode(g_ctx, batch);
+        llama_batch_free(batch);
+
+        if (ret != 0) {
+            LOGE("decode_text_batch failed at offset %zu, ret=%d", offset, ret);
+            return false;
+        }
+        n_past += (llama_pos)chunk;
+    }
+    return true;
+}
+
+// ── Helper: decode image embeddings ──────────────────────────────────────────
+static bool decode_image_batch(
+        float* embd, size_t n_toks, int32_t n_embd,
+        llama_pos& n_past, bool need_logits)
+{
+    const size_t BATCH_SIZE = 512;
+    for (size_t offset = 0; offset < n_toks; offset += BATCH_SIZE) {
+        size_t chunk = std::min(BATCH_SIZE, n_toks - offset);
+        bool last_chunk = (offset + chunk >= n_toks);
+
+        llama_batch batch = llama_batch_init((int32_t)chunk, n_embd, 1);
+        batch.n_tokens = (int32_t)chunk;
+        std::memcpy(batch.embd, embd + offset * n_embd, chunk * n_embd * sizeof(float));
+
+        for (size_t j = 0; j < chunk; j++) {
+            batch.pos[j]       = n_past + (llama_pos)j;
+            batch.n_seq_id[j]  = 1;
+            batch.seq_id[j][0] = 0;
+            batch.logits[j]    = (last_chunk && j == chunk - 1 && need_logits) ? 1 : 0;
+        }
+
+        int ret = llama_decode(g_ctx, batch);
+        llama_batch_free(batch);
+
+        if (ret != 0) {
+            LOGE("decode_image_batch failed at offset %zu, ret=%d", offset, ret);
+            return false;
+        }
+        n_past += (llama_pos)chunk;
+    }
+    return true;
+}
+
+// ── generate ──────────────────────────────────────────────────────────────────
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_anurag_visionqa_ai_LlamaJNI_generate(
+        JNIEnv* env, jobject,
+        jintArray pixelData,
+        jint imageWidth, jint imageHeight,
+        jstring prompt,
+        jint maxTokens,
+        jobject tokenCallback)
+{
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (!g_model || !g_ctx || !g_mtmd)
+        return env->NewStringUTF("Error: Engine not ready.");
+
+    g_abort.store(false);
+
+    jclass    cb_class  = env->GetObjectClass(tokenCallback);
+    jmethodID cb_invoke = env->GetMethodID(cb_class, "invoke", "(Ljava/lang/Object;)Ljava/lang/Object;");
+    env->DeleteLocalRef(cb_class);
+
+    // 1. ARGB → RGB
+    jint* argb = env->GetIntArrayElements(pixelData, nullptr);
+    jsize  npx  = env->GetArrayLength(pixelData);
+    std::vector<uint8_t> rgb((size_t)npx * 3);
+    for (jsize i = 0; i < npx; i++) {
+        uint32_t px = (uint32_t)argb[i];
+        rgb[i*3+0]  = (px >> 16) & 0xFF;
+        rgb[i*3+1]  = (px >>  8) & 0xFF;
+        rgb[i*3+2]  =  px        & 0xFF;
+    }
+    env->ReleaseIntArrayElements(pixelData, argb, JNI_ABORT);
+
+    struct mtmd_bitmap* bitmap = mtmd_bitmap_init((uint32_t)imageWidth, (uint32_t)imageHeight, rgb.data());
+    if (!bitmap) return env->NewStringUTF("Error: mtmd_bitmap_init failed.");
+
+    // 2. ChatML Prompt (Letting mtmd_tokenize handle the vision tags!)
+    const char* marker = mtmd_default_marker();
+    const char* raw_q  = env->GetStringUTFChars(prompt, nullptr);
+
+    std::string full_text =
+            "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
+            "<|im_start|>user\n"
+            + std::string(marker) + "\n"
+            + std::string(raw_q)
+            + "<|im_end|>\n"
+              "<|im_start|>assistant\n";
+
+    env->ReleaseStringUTFChars(prompt, raw_q);
+    LOGI("Prompt built. Marker: %s", marker);
+
+    // 3. Tokenize
+    struct mtmd_input_text itext = { full_text.c_str(), true, true };
+    struct mtmd_input_chunks* chunks = mtmd_input_chunks_init();
+    const struct mtmd_bitmap* bitmaps_list[1] = { bitmap };
+
+    if (mtmd_tokenize(g_mtmd, chunks, &itext, bitmaps_list, 1) != 0) {
+        LOGE("mtmd_tokenize failed.");
+        mtmd_bitmap_free(bitmap);
+        mtmd_input_chunks_free(chunks);
+        return env->NewStringUTF("Error: Tokenization failed.");
+    }
+
+    size_t n_chunks = mtmd_input_chunks_size(chunks);
+    LOGI("Tokenized into %zu chunks.", n_chunks);
+
+    // 4. Prefill Pipeline (Using Claude's Batch Chunker)
+    llama_memory_clear(llama_get_memory(g_ctx), true);
+    llama_pos n_past = 0;
+    bool prefill_ok = true;
+
+    for (size_t i = 0; i < n_chunks && prefill_ok; i++) {
+        const struct mtmd_input_chunk* chunk = mtmd_input_chunks_get(chunks, i);
+        bool is_last = (i == n_chunks - 1);
+
+        if (mtmd_input_chunk_get_type(chunk) == MTMD_INPUT_CHUNK_TYPE_IMAGE) {
+            LOGI("Prefilling image chunk %zu...", i);
+
+            if (mtmd_encode_chunk(g_mtmd, chunk) != 0) {
+                LOGE("mtmd_encode_chunk failed on chunk %zu", i);
+                prefill_ok = false;
+                break;
+            }
+
+            float* embd   = mtmd_get_output_embd(g_mtmd);
+            size_t   n_toks = mtmd_input_chunk_get_n_tokens(chunk);
+            int32_t  n_embd = llama_model_n_embd_inp(g_model);
+
+            LOGI("Image = %zu visual tokens, n_embd=%d", n_toks, n_embd);
+
+            if (n_past + (llama_pos)n_toks > (llama_pos)llama_n_ctx(g_ctx)) {
+                LOGE("Context overflow: image needs %zu, only %d slots left", n_toks, (int)(llama_n_ctx(g_ctx) - n_past));
+                prefill_ok = false;
+                break;
+            }
+
+            prefill_ok = decode_image_batch(embd, n_toks, n_embd, n_past, is_last);
+
+        } else if (mtmd_input_chunk_get_type(chunk) == MTMD_INPUT_CHUNK_TYPE_TEXT) {
+            size_t n_toks = 0;
+            const llama_token* toks = mtmd_input_chunk_get_tokens_text(chunk, &n_toks);
+
+            LOGI("Prefilling text chunk %zu (%zu tokens)...", i, n_toks);
+
+            if (n_toks == 0) continue;
+
+            if (n_past + (llama_pos)n_toks > (llama_pos)llama_n_ctx(g_ctx)) {
+                LOGE("Context overflow: text needs %zu, only %d slots left", n_toks, (int)(llama_n_ctx(g_ctx) - n_past));
+                prefill_ok = false;
+                break;
+            }
+
+            prefill_ok = decode_text_batch(toks, n_toks, n_past, is_last);
+        }
+    }
+
+    mtmd_bitmap_free(bitmap);
+    mtmd_input_chunks_free(chunks);
+
+    if (!prefill_ok) {
+        return env->NewStringUTF("Error: Prefill failed.");
+    }
+
+    LOGI("Prefill complete. n_past=%d. Starting generation...", (int)n_past);
+
+    // 5. Official Sampling & Generation
+    const struct llama_vocab* vocab = llama_model_get_vocab(g_model);
+
+    // Use the official sampler chain (no manual logit modification!)
+    struct llama_sampler_chain_params sparams = llama_sampler_chain_default_params();
+    struct llama_sampler * smpl = llama_sampler_chain_init(sparams);
+
+    llama_sampler_chain_add(smpl, llama_sampler_init_penalties(64, 1.05f, 0.0f, 0.0f)); // 1.05 keeps it creative but on-topic
+    llama_sampler_chain_add(smpl, llama_sampler_init_top_k(40));
+    llama_sampler_chain_add(smpl, llama_sampler_init_top_p(0.9f, 1));
+    llama_sampler_chain_add(smpl, llama_sampler_init_temp(0.4f));
+    llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+
+    std::string result;
+    result.reserve(512);
+
+    for (int step = 0; step < (int)maxTokens; step++) {
+        if (g_abort.load()) { LOGI("Aborted at step %d", step); break; }
+        if (n_past >= (llama_pos)llama_n_ctx(g_ctx)) { LOGI("Context full."); break; }
+
+        // Use the official sampler to pick the next token
+        llama_token best_id = llama_sampler_sample(smpl, g_ctx, -1);
+        llama_sampler_accept(smpl, best_id); // Enforce repetition penalties naturally
+
+        if (llama_vocab_is_eog(vocab, best_id)) {
+            LOGI("EOS at step %d", step);
+            break;
+        }
+
+        // Decode token to text
+        char piece[256] = {};
+        int plen = llama_token_to_piece(vocab, best_id, piece, sizeof(piece), 0, true);
+
+        // 🚨 CRITICAL FIX: Only break if extraction failed entirely. Do NOT break on 0-length tokens!
+        if (plen < 0) {
+            LOGE("Token piece extraction failed at step %d", step);
+            break;
+        }
+
+        // Only stream to UI if it has a visible text value
+        if (plen > 0) {
+            std::string ps(piece, (size_t)plen);
+            result += ps;
+
+            jbyteArray jBytes = env->NewByteArray(plen);
+            env->SetByteArrayRegion(jBytes, 0, plen, (const jbyte*)piece);
+            env->CallObjectMethod(tokenCallback, cb_invoke, jBytes);
+            env->DeleteLocalRef(jBytes);
+        }
+
+        // Always feed the token back into the engine, even if plen == 0
+        llama_batch nb = llama_batch_init(1, 0, 1);
+        nb.n_tokens     = 1;
+        nb.token[0]     = best_id;
+        nb.pos[0]       = n_past++;
+        nb.n_seq_id[0]  = 1;
+        nb.seq_id[0][0] = 0;
+        nb.logits[0]    = 1; // Always ask for logits on the next loop
+
+        int ret = llama_decode(g_ctx, nb);
+        llama_batch_free(nb);
+
+        if (ret != 0) {
+            LOGE("Decode failed at step %d, ret=%d", step, ret);
+            break;
+        }
+    }
+
+    llama_sampler_free(smpl);
+
+    LOGI("Generation done. result length=%zu", result.size());
+    return env->NewStringUTF(result.c_str());
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_anurag_visionqa_ai_LlamaJNI_abortGeneration(JNIEnv*, jobject) {
+    g_abort.store(true);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_anurag_visionqa_ai_LlamaJNI_freeModel(JNIEnv*, jobject) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    free_all();
+}
+
+================================================================================
 # FILE: app\src\main\java\com\anurag\visionqa\ai\FakeAI.kt
 # LINES: 9
 ================================================================================
@@ -283,6 +689,390 @@ fun runFakeAI(bitmap: Bitmap, question: String): String {
     return "FAKE AI RESULT\nImage: ${bitmap.width}x${bitmap.height}\nQuestion: $question"
 }
 
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ai\LlamaJNI.kt
+# LINES: 83
+================================================================================
+
+package com.anurag.visionqa.ai
+
+import android.util.Log
+
+object LlamaJNI {
+    init {
+        try {
+            Log.d("LlamaJNI", "--- Loading ggml-base ---")
+            System.loadLibrary("ggml-base")
+            Log.d("LlamaJNI", "✅ ggml-base loaded")
+
+            Log.d("LlamaJNI", "--- Loading ggml-cpu ---")
+            System.loadLibrary("ggml-cpu")
+            Log.d("LlamaJNI", "✅ ggml-cpu loaded")
+
+            Log.d("LlamaJNI", "--- Loading ggml core ---")
+            System.loadLibrary("ggml")
+            Log.d("LlamaJNI", "✅ ggml loaded")
+
+            Log.d("LlamaJNI", "--- Loading llama ---")
+            System.loadLibrary("llama")
+            Log.d("LlamaJNI", "✅ llama loaded")
+
+            Log.d("LlamaJNI", "--- Loading multimodal bridge (mtmd) ---")
+            System.loadLibrary("mtmd")
+            Log.d("LlamaJNI", "✅ mtmd loaded")
+
+            Log.d("LlamaJNI", "--- Loading JNI wrapper (visionqa_jni) ---")
+            System.loadLibrary("visionqa_jni")
+            Log.d("LlamaJNI", "✅ visionqa_jni loaded")
+
+            Log.d("LlamaJNI", "🎉 ALL modular native libraries loaded successfully")
+
+        } catch (e: UnsatisfiedLinkError) {
+            Log.e("LlamaJNI", "❌ LIBRARY LOAD FAILED: ${e.message}")
+            Log.e("LlamaJNI", "❌ Full error:", e)
+        } catch (e: Exception) {
+            Log.e("LlamaJNI", "❌ Unexpected error loading libraries: ${e.message}", e)
+        }
+    }
+    /**
+     * Loads the language model and multimodal projector.
+     * Safe to call multiple times — frees existing state before reloading.
+     */
+    external fun loadModel(
+        modelPath:  String,
+        mmprojPath: String,
+        threads:    Int,
+        ctx:        Int
+    ): Boolean
+
+    /**
+     * Runs vision+language inference.
+     * Blocks the calling thread — always call from Dispatchers.IO.
+     *
+     * @param pixelData     Raw ARGB pixels from Bitmap.getPixels()
+     * @param imageWidth    Width of the bitmap
+     * @param imageHeight   Height of the bitmap
+     * @param prompt        User question — plain text, no template wrapping
+     * @param maxTokens     Hard cap on output tokens
+     * @param tokenCallback Called once per generated token piece for streaming
+     */
+    external fun generate(
+        pixelData:     IntArray,
+        imageWidth:    Int,
+        imageHeight:   Int,
+        prompt:        String,
+        maxTokens:     Int,
+        tokenCallback: (ByteArray) -> Unit
+    ): String
+
+    /**
+     * Signals the C++ generation loop to stop immediately.
+     * Thread-safe — uses std::atomic internally, returns instantly.
+     */
+    external fun abortGeneration()
+
+    /**
+     * Frees all native model state.
+     * Blocks until any in-progress generation finishes.
+     */
+    external fun freeModel()
+}
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ai\MiniCPMDownloader.kt
+# LINES: 139
+================================================================================
+
+package com.anurag.visionqa.ai
+
+import android.content.Context
+import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.File
+import java.io.FileOutputStream
+import java.util.concurrent.TimeUnit
+
+class MiniCPMDownloader(private val context: Context) {
+
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(300, TimeUnit.SECONDS)
+        .readTimeout(300, TimeUnit.SECONDS)
+        .writeTimeout(300, TimeUnit.SECONDS)
+        .build()
+
+    private val modelDir = context.getExternalFilesDir("minicpm") ?: File(context.filesDir, "minicpm")
+
+    companion object {
+        private const val TAG = "MiniCPMDownloader"
+
+        // 🚨 TEMPORARY REDMI TEST URLS (Qwen2-VL 2B) 🚨
+        private const val BRAIN_URL = "https://huggingface.co/ggml-org/Qwen2-VL-2B-Instruct-GGUF/resolve/main/Qwen2-VL-2B-Instruct-Q4_K_M.gguf"
+        private const val EYES_URL = "https://huggingface.co/ggml-org/Qwen2-VL-2B-Instruct-GGUF/resolve/main/mmproj-Qwen2-VL-2B-Instruct-Q8_0.gguf"
+    }
+
+    init {
+        if (!modelDir.exists()) {
+            modelDir.mkdirs()
+        }
+    }
+
+    suspend fun downloadIfNeeded(
+        onProgress: (String, Int) -> Unit
+    ): Boolean = withContext(Dispatchers.IO) {
+
+        val brainFile = File(modelDir, "ggml-model-Q4_K_M.gguf")
+        val eyesFile = File(modelDir, "mmproj-model-f16.gguf")
+
+        if (modelsExist()) {
+            onProgress("Models ready (~1.7GB)", 100)
+            return@withContext true
+        }
+
+        try {
+            // 1. Download the Brain (986 MB)
+            if (!brainFile.exists() || brainFile.length() < 900_000_000L) {
+                onProgress("Downloading Qwen Brain (986MB)...", 0)
+                downloadFile(
+                    url = BRAIN_URL,
+                    destination = brainFile,
+                    onProgress = { p -> onProgress("Brain: $p%", (p * 0.6).toInt()) }
+                )
+            }
+
+            // 2. Download the Eyes (710 MB)
+            if (!eyesFile.exists() || eyesFile.length() < 700_000_000L) {
+                onProgress("Downloading Vision Projector (710MB)...", 60)
+                downloadFile(
+                    url = EYES_URL,
+                    destination = eyesFile,
+                    onProgress = { p -> onProgress("Eyes: $p%", 60 + (p * 0.4).toInt()) }
+                )
+            }
+
+            Log.d(TAG, "✅ All GGUF downloads complete!")
+            onProgress("Download complete! Ready to Initialize.", 100)
+            true
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Download failed", e)
+            onProgress("Download failed: ${e.message}", 0)
+            if (brainFile.length() < 900_000_000L) brainFile.delete()
+            if (eyesFile.length() < 700_000_000L) eyesFile.delete()
+            false
+        }
+    }
+
+    private fun downloadFile(
+        url: String,
+        destination: File,
+        onProgress: (Int) -> Unit
+    ) {
+        Log.d(TAG, "Starting download: $url")
+        val request = Request.Builder().url(url).build()
+        val response = client.newCall(request).execute()
+
+        if (!response.isSuccessful) throw Exception("HTTP ${response.code}: ${response.message}")
+
+        val body = response.body ?: throw Exception("Empty response body")
+        val contentLength = body.contentLength()
+
+        body.byteStream().use { input ->
+            FileOutputStream(destination).use { output ->
+                val buffer = ByteArray(64 * 1024) // 64KB buffer for faster writing
+                var totalBytes = 0L
+                var bytes: Int
+                var lastProgress = 0
+                var lastLogTime = System.currentTimeMillis()
+
+                while (input.read(buffer).also { bytes = it } != -1) {
+                    output.write(buffer, 0, bytes)
+                    totalBytes += bytes
+
+                    if (contentLength > 0) {
+                        val progress = ((totalBytes * 100) / contentLength).toInt()
+                        val now = System.currentTimeMillis()
+
+                        if (progress >= lastProgress + 1 || now - lastLogTime > 1000) {
+                            onProgress(progress)
+                            lastProgress = progress
+                            lastLogTime = now
+                        }
+                    }
+                }
+                output.flush()
+                onProgress(100)
+            }
+        }
+    }
+
+    fun modelsExist(): Boolean {
+        val brain = File(modelDir, "ggml-model-Q4_K_M.gguf")
+        val eyes = File(modelDir, "mmproj-model-f16.gguf")
+
+        // Qwen Validation: Brain > 900MB, Eyes > 700MB
+        return brain.exists() && brain.length() > 900_000_000L &&
+                eyes.exists() && eyes.length() > 700_000_000L
+    }
+
+    fun deleteModels() {
+        File(modelDir, "ggml-model-Q4_K_M.gguf").delete()
+        File(modelDir, "mmproj-model-f16.gguf").delete()
+    }
+}
+
+================================================================================
+# FILE: app\src\main\java\com\anurag\visionqa\ai\MiniCPMVLM.kt
+# LINES: 144
+================================================================================
+
+package com.anurag.visionqa.ai
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+
+class MiniCPMVLM(private val context: Context) : VLMInterface {
+
+    private var ready = false
+    // 1. Initialize the downloader
+    private val downloader = MiniCPMDownloader(context)
+
+    companion object {
+        private const val TAG           = "MiniCPMVLM"
+        private const val MODEL_FILE    = "ggml-model-Q4_K_M.gguf"
+        private const val MMPROJ_FILE   = "mmproj-model-f16.gguf"
+        private const val MODEL_SUBDIR  = "minicpm"
+        private const val N_THREADS     = 4
+        private const val N_CTX         = 2048
+        private const val MAX_TOKENS    = 512
+        private const val MAX_IMAGE_DIM = 448
+    }
+
+    override suspend fun initialize(): Boolean = initialize { _, _ -> }
+
+    override suspend fun initialize(onProgress: (String, Int) -> Unit): Boolean =
+        withContext(Dispatchers.IO) {
+            Log.d(TAG, "=== INITIALIZE START ===")
+
+            // 2. RUN THE DOWNLOADER FIRST
+            if (!downloader.downloadIfNeeded { msg, prog -> onProgress(msg, prog) }) {
+                Log.e(TAG, "❌ Download failed or was interrupted.")
+                return@withContext false
+            }
+
+            // 3. PROCEED WITH LOADING (Files are guaranteed to exist now)
+            val modelDir = File(context.getExternalFilesDir(null), MODEL_SUBDIR)
+            val modelPath  = File(modelDir, MODEL_FILE).absolutePath
+            val mmprojPath = File(modelDir, MMPROJ_FILE).absolutePath
+
+            Log.d(TAG, "Model dir: ${modelDir.absolutePath}")
+            Log.d(TAG, "Free RAM: ${Runtime.getRuntime().freeMemory() / 1_000_000}MB")
+
+            onProgress("Loading model into RAM...", 95)
+            Log.d(TAG, "Calling LlamaJNI.loadModel...")
+
+            val loadStart = System.currentTimeMillis()
+            val ok = try {
+                LlamaJNI.loadModel(modelPath, mmprojPath, N_THREADS, N_CTX)
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ LlamaJNI.loadModel threw exception: ${e.message}", e)
+                false
+            }
+
+            val loadMs = System.currentTimeMillis() - loadStart
+            Log.d(TAG, "loadModel returned: $ok in ${loadMs}ms")
+            ready = ok
+
+            if (ok) {
+                Log.d(TAG, "✅ MiniCPM-V ready")
+                onProgress("✅ Ready!", 100)
+            } else {
+                Log.e(TAG, "❌ loadModel() returned false — check C++ Logcat for details")
+                onProgress("❌ Model load failed.", 0)
+            }
+            ok
+        }
+
+    override fun isReady() = ready
+
+    override suspend fun chat(
+        image: Bitmap,
+        question: String,
+        systemPrompt: String?,
+        conversationHistory: List<Pair<String, String>>,
+        onTokenGenerated: ((String) -> Unit)?
+    ): String = withContext(Dispatchers.IO) {
+        if (!ready) return@withContext "Model not loaded."
+
+        // 1. Scale the image to a safe size
+        val safeImage = capImageSize(image, MAX_IMAGE_DIM)
+
+        // 2. Capture dimensions IMMEDIATELY while the bitmap is alive
+        val width  = safeImage.width
+        val height = safeImage.height
+
+        // 3. Extract pixels into a standard IntArray
+        val pixels = IntArray(width * height)
+        safeImage.getPixels(pixels, 0, width, 0, 0, width, height)
+
+        // 4. Run the AI generation
+        // Note: We pass the RAW 'width' and 'height' variables, NOT 'safeImage.width'
+        val result = try {
+            LlamaJNI.generate(
+                pixelData     = pixels,
+                imageWidth    = width,
+                imageHeight   = height,
+                prompt        = question,
+                maxTokens     = MAX_TOKENS,
+                tokenCallback = { tokenBytes ->
+                    val tokenStr = String(tokenBytes, Charsets.UTF_8)
+                    onTokenGenerated?.invoke(tokenStr)
+                }
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Generation error: ${e.message}")
+            "Error during generation."
+        }
+
+        // 5. FINALLY recycle the safeImage copy now that the AI is finished with it
+        if (safeImage !== image) {
+            safeImage.recycle()
+        }
+
+        result.trim()
+    }
+
+    fun abort() {
+        LlamaJNI.abortGeneration()
+    }
+
+    private fun capImageSize(bitmap: Bitmap, maxDim: Int): Bitmap {
+        val w = bitmap.width
+        val h = bitmap.height
+        if (w <= maxDim && h <= maxDim) return bitmap
+        val scale = maxDim.toFloat() / maxOf(w, h)
+        return Bitmap.createScaledBitmap(bitmap, (w * scale).toInt(), (h * scale).toInt(), true)
+    }
+
+    override fun getModelInfo() = ModelInfo(
+        name    = "Qwen2-VL 2B (Redmi Test)",
+        size    = "~1.7GB",
+        speed   = "CPU Optimized",
+        quality = "Lite Multimodal"
+    )
+
+    override fun cleanup() {
+        LlamaJNI.freeModel()
+        ready = false
+    }
+}
 
 ================================================================================
 # FILE: app\src\main\java\com\anurag\visionqa\ai\MoondreamDownloader.kt
@@ -477,7 +1267,7 @@ class MoondreamDownloader(private val context: Context) {
 
 ================================================================================
 # FILE: app\src\main\java\com\anurag\visionqa\ai\MoondreamVLM.kt
-# LINES: 488
+# LINES: 380
 ================================================================================
 
 package com.anurag.visionqa.ai
@@ -513,70 +1303,40 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
     companion object {
         private const val TAG = "MoondreamVLM"
         private const val IMAGE_SIZE = 378
-        private const val MAX_NEW_TOKENS = 512
-
-        // Repetition penalty: penalises tokens already generated.
-        // 1.0 = off. Small quantized models need a stronger penalty (1.5)
-        // because their logit distributions are noisier than full-size models.
+        private const val MAX_NEW_TOKENS = 80
         private const val REPETITION_PENALTY = 1.15f
-
-        // Temperature for sampling. Small quantized models hallucinate badly
-        // at temperatures above ~0.4. Keep this low — we rely on the repetition
-        // penalty (not temperature) to prevent loops.
         private const val TEMPERATURE = 0.0f
-
-        // Top-k: only consider this many candidate tokens per step.
-        // 5 is tight enough to prevent hallucinated names on a q4 model
-        // while still allowing natural variation in phrasing.
         private const val TOP_K = 5
     }
 
-    suspend fun initialize(onProgress: (String, Int) -> Unit = { _, _ -> }): Boolean =
+    // Standard initialization required by VLMInterface
+    override suspend fun initialize(): Boolean = initialize { _, _ -> }
+
+    // Progress-aware initialization for UI reporting
+    override suspend fun initialize(onProgress: (String, Int) -> Unit): Boolean =
         withContext(Dispatchers.IO) {
             try {
-                Log.d(TAG, "=== MOONDREAM INIT ===")
+                Log.d(TAG, "=== MOONDREAM FALLBACK INIT ===")
                 if (!downloader.downloadIfNeeded { msg, prog -> onProgress(msg, prog) })
                     return@withContext false
 
                 tokenizer = RealTokenizer(context, downloader.getTokenizerPath())
-
-                // ---- TOKENIZER SANITY CHECK ----
-                // In Logcat filter by "MoondreamVLM" and look for:
-                //   selfTest: encode('Hello world')=[15496, 995] decoded='Hello world'
-                // If you see [0,0] or empty list → tokenizer.json didn't load properly.
                 Log.i(TAG, "Tokenizer check: ${tokenizer!!.selfTest()}")
 
                 ortEnv = OrtEnvironment.getEnvironment()
 
-//                val options = OrtSession.SessionOptions().apply {
-//                    setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
-//                    try {
-//                        // 1. Try Hardware Acceleration (NNAPI) first!
-//                        addNnapi()
-//                        Log.d(TAG, "✅ NNAPI (Hardware Acceleration) Enabled!")
-//                    } catch (e: Exception) {
-//                        Log.w(TAG, "NNAPI unavailable, falling back to CPU: ${e.message}")
-//                        // 2. Fall back to XNNPACK if NNAPI fails
-//                        try {
-//                            addXnnpack(mapOf("intra_op_num_threads" to "4"))
-//                        } catch (e2: Exception) {
-//                            setIntraOpNumThreads(4)
-//                        }
-//                    }
-//                }
+                val bigCores = Runtime.getRuntime().availableProcessors().coerceIn(2, 4)
 
                 val options = OrtSession.SessionOptions().apply {
                     setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
                     try {
-                        // Crucial: No addNnapi() here!
-                        addXnnpack(mapOf("intra_op_num_threads" to "4"))
-                        Log.d(TAG, "✅ XNNPACK Enabled")
+                        addXnnpack(mapOf("intra_op_num_threads" to bigCores.toString()))
+                        Log.d(TAG, "✅ XNNPACK Enabled on $bigCores threads")
                     } catch (e: Exception) {
                         Log.w(TAG, "XNNPACK unavailable, falling back: ${e.message}")
-                        setIntraOpNumThreads(4)
+                        setIntraOpNumThreads(bigCores)
                     }
                 }
-
                 visionSession  = ortEnv!!.createSession(downloader.getVisionPath(), options)
                 embedSession   = ortEnv!!.createSession(downloader.getEmbedPath(), options)
                 decoderSession = ortEnv!!.createSession(downloader.getDecoderPath(), options)
@@ -589,7 +1349,6 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
             }
         }
 
-    override suspend fun initialize(): Boolean = initialize { _, _ -> }
     override fun isReady(): Boolean = ready
 
     fun resetChat() {
@@ -607,33 +1366,30 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
         lastSessionResult = null
         persistentKVCache = null
         currentSequenceLength = 0
-        // Notice we DO NOT set cachedImageFeatures to null here.
-        // This keeps the image processing instant!
         Log.d(TAG, "🧹 Text memory wiped. Image features retained.")
     }
 
-    // Standard VLMInterface chat (no OCR text)
+    // Unified entry point implementation
     override suspend fun chat(
         image: Bitmap,
         question: String,
         systemPrompt: String?,
         conversationHistory: List<Pair<String, String>>,
         onTokenGenerated: ((String) -> Unit)?
-    ): String = chatWithOcr(image, question, null, null, onTokenGenerated)
+    ): String = chatWithOcr(image, question, null, systemPrompt, onTokenGenerated)
 
     /**
-     * Primary entry point. Pass [ocrText] from OcrHelper if available —
-     * it gets injected into the prompt so the model reasons about accurate
-     * text instead of guessing from blurry 378×378 pixels.
+     * Fallback implementation using ONNX Runtime.
+     * Injected OCR text is handled here if available.
      */
-    suspend fun chatWithOcr(
+    private suspend fun chatWithOcr(
         image: Bitmap,
         question: String,
         ocrText: String?,
         systemPrompt: String? = null,
         onTokenGenerated: ((String) -> Unit)? = null
     ): String = withContext(Dispatchers.IO) {
-        if (!ready) return@withContext "Not initialized"
+        if (!ready) return@withContext "Fallback model not initialized"
 
         if (currentSequenceLength > 1500) {
             Log.w(TAG, "⚠️ Context too long, resetting.")
@@ -641,14 +1397,12 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
         }
 
         try {
-            // Intercept identity questions — moondream2 has no instruction-tuning
-            // for identity and will always invent a name from training data.
-            // No prompt wording can reliably prevent this, so we short-circuit.
             val lq = question.trim().lowercase()
             val isIdentityQuestion = (lq.contains("who are you") ||
                     lq.contains("what are you") ||
                     (lq.contains("your name") && (lq.contains("what") || lq.contains("tell"))) ||
                     lq == "your name?" || lq == "name?")
+
             if (isIdentityQuestion) {
                 val reply = "I am an AI assistant. I do not have a name."
                 onTokenGenerated?.invoke(reply)
@@ -656,7 +1410,6 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
             }
 
             val isFollowUp = persistentKVCache != null
-
             val prompt = tokenizer!!.formatPrompt(
                 question     = question,
                 ocrText      = ocrText,
@@ -664,17 +1417,8 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
                 isFollowUp   = isFollowUp
             )
 
-            Log.i("VISION_PROMPT", "=== EXACT PROMPT GOING TO MODEL ===\n$prompt")
-
             val inputIds = tokenizer!!.encode(prompt)
-
-            // Log the first few token IDs so you can verify in Logcat
-            Log.d(TAG, "Encoded ${inputIds.size} tokens, first 10: ${inputIds.take(10).toList()}")
-
-            if (inputIds.isEmpty()) {
-                Log.e(TAG, "❌ encode() returned empty! Check tokenizer selfTest in Logcat.")
-                return@withContext "Tokenizer error — see Logcat."
-            }
+            if (inputIds.isEmpty()) return@withContext "Tokenizer error — see Logcat."
 
             val textEmbeds  = embedText(inputIds)
             val finalEmbeds = if (!isFollowUp) {
@@ -693,16 +1437,8 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Image encoding with cache
-    // -----------------------------------------------------------------------
-
     private fun getOrEncodeImage(bitmap: Bitmap): Array<FloatArray> {
-        if (cachedImageBitmap === bitmap && cachedImageFeatures != null) {
-            Log.d(TAG, "♻️ Reusing cached image features.")
-            return cachedImageFeatures!!
-        }
-        Log.d(TAG, "🖼️ Running vision encoder...")
+        if (cachedImageBitmap === bitmap && cachedImageFeatures != null) return cachedImageFeatures!!
         val features = encodeImage(bitmap)
         cachedImageFeatures = features
         cachedImageBitmap = bitmap
@@ -730,10 +1466,6 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
         return features
     }
 
-    // -----------------------------------------------------------------------
-    // Text embedding
-    // -----------------------------------------------------------------------
-
     private fun embedText(inputIds: IntArray): Array<FloatArray> {
         val longs  = LongArray(inputIds.size) { inputIds[it].toLong() }
         val tensor = OnnxTensor.createTensor(
@@ -746,10 +1478,6 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
     }
 
     private fun combineEmbeddings(a: Array<FloatArray>, b: Array<FloatArray>) = a + b
-
-    // -----------------------------------------------------------------------
-    // Autoregressive generation with KV cache
-    // -----------------------------------------------------------------------
 
     private fun generateWithKVCache(
         embeddings: Array<FloatArray>,
@@ -813,10 +1541,9 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
                 val rawLogits: FloatArray = when (logitsRaw) {
                     is Array<*> -> (logitsRaw[0] as Array<*>).last() as FloatArray
                     is FloatArray -> logitsRaw
-                    else -> throw Exception("Unexpected logits: ${logitsRaw?.javaClass}")
+                    else -> throw Exception("Unexpected logits type")
                 }
 
-                // Apply repetition penalty and temperature before sampling.
                 val logits = applyRepetitionPenalty(rawLogits, generated, REPETITION_PENALTY)
                 val tokenId = sampleWithTemperature(logits, TEMPERATURE)
 
@@ -825,7 +1552,6 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
                 generated.add(tokenId)
                 onToken?.invoke(tokenizer!!.decode(intArrayOf(tokenId)))
 
-                // --- Update KV cache ---
                 val newKV = mutableMapOf<String, OnnxTensor>()
                 for (l in 0 until numLayers) {
                     newKV["past_key_values.$l.key"]   = out.get("present.$l.key").get()   as OnnxTensor
@@ -854,12 +1580,10 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
                 inputs.putAll(newKV)
 
             } catch (e: Exception) {
-                Log.e(TAG, "Step $step error: ${e.message}")
                 break
             }
         }
 
-        // Persist KV cache for next turn
         lastSessionResult?.close(); lastSessionResult = prevOut
         persistentKVCache = mutableMapOf()
         if (lastSessionResult != null) {
@@ -874,22 +1598,14 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
         return tokenizer!!.decode(generated.toIntArray())
     }
 
-    // -----------------------------------------------------------------------
-    // Misc
-    // -----------------------------------------------------------------------
+    // Matches ModelInfo fields: name, size, type, quality
+    override fun getModelInfo(): ModelInfo = ModelInfo(
+        name    = "Moondream2 ONNX",
+        size    = "~1.5GB",
+        speed   = "Slow (CPU)",
+        quality = "Basic"
+    )
 
-    override fun getModelInfo(): ModelInfo = ModelInfo("Moondream2 ONNX", "~1.5GB", "Good", "Good")
-
-    // -----------------------------------------------------------------------
-    // Sampling helpers
-    // -----------------------------------------------------------------------
-
-    /**
-     * Applies a repetition penalty to logits.
-     * For every token that has already been generated, its logit is divided
-     * by [penalty] (if positive) or multiplied (if negative), making it
-     * less likely to appear again. Standard implementation from HuggingFace.
-     */
     private fun applyRepetitionPenalty(
         logits: FloatArray,
         generatedTokens: List<Int>,
@@ -897,58 +1613,25 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
     ): FloatArray {
         if (penalty == 1.0f || generatedTokens.isEmpty()) return logits
         val result = logits.copyOf()
-        // Use a set to avoid penalising the same token twice
         for (tokenId in generatedTokens.toSet()) {
             if (tokenId < result.size) {
-                result[tokenId] = if (result[tokenId] > 0f)
-                    result[tokenId] / penalty
-                else
-                    result[tokenId] * penalty
+                if (tokenId in 15..57) continue
+                result[tokenId] = if (result[tokenId] > 0f) result[tokenId] / penalty else result[tokenId] * penalty
             }
         }
         return result
     }
 
-    /**
-     * Samples a token using temperature scaling.
-     * temperature = 1.0 → greedy argmax (deterministic, prone to loops).
-     * temperature < 1.0 → sharper distribution (more focused).
-     * temperature > 1.0 → flatter distribution (more random).
-     *
-     * We use top-k=40 filtering before sampling so extremely low-probability
-     * tokens (garbage, hallucinations) are never sampled.
-     */
     private fun sampleWithTemperature(logits: FloatArray, temperature: Float): Int {
-        if (temperature <= 0f) {
-            // Pure greedy
-            return logits.indices.maxByOrNull { logits[it] } ?: 0
-        }
-
-        // Scale logits by temperature
+        if (temperature <= 0f) return logits.indices.maxByOrNull { logits[it] } ?: 0
         val scaled = FloatArray(logits.size) { logits[it] / temperature }
-
-        // Top-k filtering: zero out everything outside top 40 tokens
-        val k = TOP_K
-        val topKIndices = scaled.indices
-            .sortedByDescending { scaled[it] }
-            .take(k)
-            .toSet()
-        val filtered = FloatArray(scaled.size) { i ->
-            if (i in topKIndices) scaled[i] else Float.NEGATIVE_INFINITY
-        }
-
-        // Softmax
+        val topKIndices = scaled.indices.sortedByDescending { scaled[it] }.take(TOP_K).toSet()
+        val filtered = FloatArray(scaled.size) { i -> if (i in topKIndices) scaled[i] else Float.NEGATIVE_INFINITY }
         val maxLogit = filtered.filter { it.isFinite() }.maxOrNull() ?: 0f
-        val exps = FloatArray(filtered.size) { i ->
-            if (filtered[i].isFinite()) Math.exp((filtered[i] - maxLogit).toDouble()).toFloat()
-            else 0f
-        }
+        val exps = FloatArray(filtered.size) { i -> if (filtered[i].isFinite()) Math.exp((filtered[i] - maxLogit).toDouble()).toFloat() else 0f }
         val sumExp = exps.sum()
         if (sumExp <= 0f) return logits.indices.maxByOrNull { logits[it] } ?: 0
-
         val probs = FloatArray(exps.size) { exps[it] / sumExp }
-
-        // Multinomial sample
         val r = Math.random().toFloat()
         var cumulative = 0f
         for (i in probs.indices) {
@@ -960,18 +1643,17 @@ class MoondreamVLM(private val context: Context) : VLMInterface {
 
     override fun cleanup() {
         resetChat()
-        visionSession?.close(); embedSession?.close()
-        decoderSession?.close(); ortEnv?.close()
+        visionSession?.close()
+        embedSession?.close()
+        decoderSession?.close()
+        ortEnv?.close()
         ready = false
     }
-
-    fun getDownloader(): MoondreamDownloader = downloader
-    fun testTokenizer(text: String): String = tokenizer?.selfTest() ?: "not loaded"
 }
 
 ================================================================================
 # FILE: app\src\main\java\com\anurag\visionqa\ai\OcrHelper.kt
-# LINES: 144
+# LINES: 167
 ================================================================================
 
 package com.anurag.visionqa.ai
@@ -1002,6 +1684,8 @@ class OcrHelper {
 
     companion object {
         private const val TAG = "OcrHelper"
+        // Used in buildStructuredLines to detect price-column elements
+        private val PRICE_PATTERN = Regex("""\d{2,4}\s*/?-?""")
     }
 
     data class OcrResult(
@@ -1068,51 +1752,72 @@ class OcrHelper {
         result: com.google.mlkit.vision.text.Text
     ): List<StructuredLine> {
 
-        data class Element(val text: String, val cx: Int, val cy: Int)
+        data class Element(val text: String, val left: Int, val right: Int, val cy: Int)
 
-        // Collect all line-level elements with their centres
+        // Collect all line-level elements with their bounding boxes
         val elements = mutableListOf<Element>()
-        var maxX = 0
-
         for (block in result.textBlocks) {
             for (line in block.lines) {
                 val box = line.boundingBox ?: continue
-                val cx = (box.left + box.right) / 2
                 val cy = (box.top + box.bottom) / 2
-                if (box.right > maxX) maxX = box.right
-                elements.add(Element(line.text.trim(), cx, cy))
+                elements.add(Element(line.text.trim(), box.left, box.right, cy))
             }
         }
-
         if (elements.isEmpty()) return emptyList()
 
-        val midX = maxX / 2
+        // Dynamic Y threshold: use average line height so it works on any image scale
+        val avgLineHeight = elements
+            .mapNotNull { result.textBlocks.flatMap { b -> b.lines }
+                .find { l -> l.text.trim() == it.text }?.boundingBox }
+            .map { it.height() }
+            .average()
+            .let { if (it.isNaN()) 30.0 else it }
+        val Y_THRESHOLD = (avgLineHeight * 0.6).toInt().coerceIn(15, 60)
 
         // Sort by vertical position
         elements.sortBy { it.cy }
 
-        // Group into rows: elements within Y_THRESHOLD pixels of each other
-        // are considered the same logical row
-        val Y_THRESHOLD = 20
+        // Group into rows by proximity
         val rows = mutableListOf<MutableList<Element>>()
         for (el in elements) {
             val lastRow = rows.lastOrNull()
-            if (lastRow != null && abs(el.cy - lastRow.first().cy) <= Y_THRESHOLD) {
+            if (lastRow != null && abs(el.cy - lastRow.map { it.cy }.average()) <= Y_THRESHOLD) {
                 lastRow.add(el)
             } else {
                 rows.add(mutableListOf(el))
             }
         }
 
+        // Find the true text split point: gap between rightmost left-column
+        // element and leftmost right-column element across ALL rows.
+        // This is far more accurate than maxX/2.
+        val allRights = rows.filter { it.size >= 2 }.flatMap { row ->
+            val sorted = row.sortedBy { it.left }
+            // The gap between consecutive elements in a multi-element row
+            sorted.zipWithNext().map { (a, b) -> Pair(a.right, b.left) }
+        }
+        // midX = average of gap midpoints in rows that have 2+ elements
+        val midX = if (allRights.isNotEmpty()) {
+            allRights.map { (r, l) -> (r + l) / 2 }.average().toInt()
+        } else {
+            // Fallback: use the left edge of elements that look like prices
+            val priceLeftEdges = elements
+                .filter { PRICE_PATTERN.containsMatchIn(it.text) }
+                .map { it.left }
+            if (priceLeftEdges.isNotEmpty()) priceLeftEdges.min()
+            else elements.maxOf { it.right } / 2
+        }
+
+        Log.d(TAG, "Dynamic midX=$midX, Y_THRESHOLD=$Y_THRESHOLD")
+
         // Convert each row to a StructuredLine
         return rows.map { row ->
-            val leftParts  = row.filter { it.cx <= midX }
-                .sortedBy { it.cx }
+            val sorted = row.sortedBy { it.left }
+            val leftParts  = sorted.filter { (it.left + it.right) / 2 <= midX }
                 .joinToString(" ") { it.text }
-            val rightParts = row.filter { it.cx > midX }
-                .sortedBy { it.cx }
+            val rightParts = sorted.filter { (it.left + it.right) / 2 > midX }
                 .joinToString(" ") { it.text }
-            StructuredLine(leftParts, rightParts, row.first().cy)
+            StructuredLine(leftParts, rightParts, row.map { it.cy }.average().toInt())
         }.filter { it.leftText.isNotBlank() || it.rightText.isNotBlank() }
     }
 
@@ -1121,7 +1826,7 @@ class OcrHelper {
 
 ================================================================================
 # FILE: app\src\main\java\com\anurag\visionqa\ai\OcrQueryHandler.kt
-# LINES: 223
+# LINES: 362
 ================================================================================
 
 package com.anurag.visionqa.ai
@@ -1151,15 +1856,20 @@ object OcrQueryHandler {
     fun tryAnswer(question: String, ocrResult: OcrHelper.OcrResult?): String? {
         if (ocrResult == null) return null
         val q = question.trim().lowercase()
+        android.util.Log.d("OcrQueryHandler",
+            "tryAnswer: q='$q' | lines=${ocrResult.structuredLines.size} | " +
+                    "pairs=${extractPairs(ocrResult.structuredLines).size}")
 
         return when {
-            isReadQuestion(q)       -> formatReading(ocrResult.rawText)
-            isCheapestQuestion(q)   -> findCheapest(ocrResult.structuredLines)
-            isMostExpensive(q)      -> findMostExpensive(ocrResult.structuredLines)
-            isPriceQuestion(q)      -> formatPrices(ocrResult.structuredLines, ocrResult.rawText)
-            isListQuestion(q)       -> formatList(ocrResult.structuredLines, ocrResult.rawText)
-            isCountQuestion(q)      -> formatCount(ocrResult.structuredLines)
-            else                    -> null
+            isReadQuestion(q)           -> formatReading(ocrResult.rawText)
+            isCheapestQuestion(q)       -> findCheapest(ocrResult.structuredLines)
+            isMostExpensive(q)          -> findMostExpensive(ocrResult.structuredLines)
+            isSpecificItemPrice(q)      -> findSpecificPrice(ocrResult.structuredLines, ocrResult.rawText, q)
+            isPriceQuestion(q)          -> formatPrices(ocrResult.structuredLines, ocrResult.rawText)
+            isListQuestion(q)           -> formatList(ocrResult.structuredLines, ocrResult.rawText)
+            isCountQuestion(q)          -> formatCount(ocrResult.structuredLines)
+            isAvailabilityQuestion(q)   -> checkAvailability(ocrResult.structuredLines, q)
+            else                        -> null
         }
     }
 
@@ -1168,22 +1878,24 @@ object OcrQueryHandler {
     // -----------------------------------------------------------------------
 
     private fun isReadQuestion(q: String) =
-        (q.contains("read") || q.contains("say") || q.contains("written") ||
-                q.contains("text") || q.contains("words")) &&
+        (q.contains("read") || q.contains("written") || q.contains("words") ||
+                (q.contains("say") && !q.contains("dish") && !q.contains("item") && !q.contains("menu")) ||
+                (q.contains("text") && !q.contains("price") && !q.contains("cost"))) &&
                 !isPriceQuestion(q) && !isListQuestion(q)
 
     private fun isPriceQuestion(q: String) =
         q.contains("price") || q.contains("cost") || q.contains("rate") ||
                 q.contains("how much") || q.contains("rupee") || q.contains("rs") ||
+                q.contains("₹") || q.contains("charge") ||
                 (q.contains("each") && q.contains("biryani")) ||
                 (q.contains("prices") && q.contains("of"))
 
     private fun isListQuestion(q: String) =
-        (q.contains("list") || q.contains("all") || q.contains("available") ||
+        q.contains("list") || q.contains("all") || q.contains("available") ||
                 q.contains("what are") || q.contains("items") || q.contains("options") ||
                 q.contains("show") || q.contains("menu") || q.contains("dishes") ||
-                q.contains("what") && q.contains("see"))
-
+                q.contains("give") || q.contains("tell me") ||
+                (q.contains("what") && q.contains("see"))
     private fun isCheapestQuestion(q: String) =
         q.contains("cheap") || q.contains("least expensive") ||
                 q.contains("lowest price") || q.contains("minimum") ||
@@ -1200,46 +1912,82 @@ object OcrQueryHandler {
                 (q.contains("item") || q.contains("dish") || q.contains("option") ||
                         q.contains("biryani") || q.contains("thing"))
 
+    private fun isAvailabilityQuestion(q: String) =
+        q.contains("is there") || q.contains("do they have") || q.contains("do you have") ||
+                q.contains("available") && q.contains("?")
+
+    private fun isSpecificItemPrice(q: String) =
+        (q.contains("price of") || q.contains("cost of") || q.contains("how much is") ||
+                q.contains("how much does") || q.contains("how much for")) &&
+                q.length > 20  // Has an item name after the keyword
     // -----------------------------------------------------------------------
     // Formatters
     // -----------------------------------------------------------------------
 
-    private fun formatReading(raw: String) =
-        "The image contains this text:\n\n${raw.trim()}"
+    private fun formatReading(raw: String): String {
+        // Only show item names, not the raw OCR dump with prices mixed in
+        val lines = raw.lines().map { it.trim() }.filter {
+            it.isNotBlank() && !PRICE_REGEX.containsMatchIn(it) && !isNoise(it)
+        }
+        return if (lines.isEmpty()) raw.trim()
+        else "The image shows:\n" + lines.joinToString("\n") { "• $it" }
+    }
 
     private fun formatPrices(lines: List<OcrHelper.StructuredLine>, raw: String): String {
         val pairs = extractPairs(lines)
-        if (pairs.isEmpty()) return formatReading(raw)
-        return "Prices:\n\n" + pairs.joinToString("\n") { (item, price) -> "• $item — $price" }
+        if (pairs.isEmpty()) return "I could not find price information in the image."
+        // Group items by price so output is compact, not a wall of text
+        val grouped = pairs.groupBy { it.second }
+        return buildString {
+            appendLine("Here are the items and their prices:")
+            grouped.entries.sortedBy { parsePriceValue(it.key) }.forEach { (price, items) ->
+                appendLine("\n$price:")
+                items.forEach { appendLine("  • ${it.first}") }
+            }
+        }.trim()
     }
 
     private fun formatList(lines: List<OcrHelper.StructuredLine>, raw: String): String {
         val pairs = extractPairs(lines)
-        return if (pairs.isNotEmpty()) {
-            // Show items with prices if available, items-only otherwise
-            "Items in the image:\n\n" + pairs.joinToString("\n") { (item, price) ->
-                if (price.isNotBlank()) "• $item — $price" else "• $item"
-            }
-        } else {
-            // No structured pairs — fall back to clean item lines
-            val items = extractItemsOnly(lines)
-            if (items.isEmpty()) formatReading(raw)
-            else "Items in the image:\n\n" + items.joinToString("\n") { "• $it" }
+        if (pairs.isNotEmpty()) {
+            val grouped = pairs.groupBy { it.second }
+            return buildString {
+                appendLine("Items available:")
+                grouped.entries.sortedBy { parsePriceValue(it.key) }.forEach { (price, items) ->
+                    appendLine("\n$price:")
+                    items.forEach { appendLine("  • ${it.first}") }
+                }
+            }.trim()
         }
+        val items = extractItemsOnly(lines)
+        if (items.isEmpty()) return formatReading(raw)
+        return "Items available:\n" + items.joinToString("\n") { "• $it" }
     }
 
     private fun findCheapest(lines: List<OcrHelper.StructuredLine>): String {
         val pairs = extractPairs(lines)
         if (pairs.isEmpty()) return "Could not find price information in the image."
-        val cheapest = pairs.minByOrNull { parsePriceValue(it.second) } ?: return "No prices found."
-        return "The cheapest option is ${cheapest.first} at ${cheapest.second}."
+        val minPrice = pairs.minOf { parsePriceValue(it.second) }
+        val cheapest = pairs.filter { parsePriceValue(it.second) == minPrice }
+        return if (cheapest.size == 1) {
+            "The cheapest dish is ${cheapest[0].first} at ${cheapest[0].second}."
+        } else {
+            "The cheapest options are all at ₹$minPrice/-:\n" +
+                    cheapest.joinToString("\n") { "  • ${it.first}" }
+        }
     }
 
     private fun findMostExpensive(lines: List<OcrHelper.StructuredLine>): String {
         val pairs = extractPairs(lines)
         if (pairs.isEmpty()) return "Could not find price information in the image."
-        val priciest = pairs.maxByOrNull { parsePriceValue(it.second) } ?: return "No prices found."
-        return "The most expensive option is ${priciest.first} at ${priciest.second}."
+        val maxPrice = pairs.maxOf { parsePriceValue(it.second) }
+        val priciest = pairs.filter { parsePriceValue(it.second) == maxPrice }
+        return if (priciest.size == 1) {
+            "The most expensive dish is ${priciest[0].first} at ${priciest[0].second}."
+        } else {
+            "The most expensive options are all at ₹$maxPrice/-:\n" +
+                    priciest.joinToString("\n") { "  • ${it.first}" }
+        }
     }
 
     private fun formatCount(lines: List<OcrHelper.StructuredLine>): String {
@@ -1247,6 +1995,53 @@ object OcrQueryHandler {
         val items = if (pairs.isNotEmpty()) pairs.map { it.first } else extractItemsOnly(lines)
         return "There are ${items.size} items visible in the image."
     }
+
+    private fun findSpecificPrice(
+        lines: List<OcrHelper.StructuredLine>,
+        raw: String,
+        query: String
+    ): String {
+        val pairs = extractPairs(lines)
+        if (pairs.isEmpty()) return formatReading(raw)
+
+        // Extract the item name from the query — everything after the keyword
+        val keywords = listOf("price of", "cost of", "how much is", "how much does", "how much for")
+        var itemQuery = query
+        for (kw in keywords) {
+            val idx = query.indexOf(kw)
+            if (idx >= 0) { itemQuery = query.substring(idx + kw.length).trim().trimEnd('?', '.'); break }
+        }
+
+        // Fuzzy match against known items
+        val best = pairs.minByOrNull { levenshtein(itemQuery, it.first.lowercase()) }
+        return if (best != null && levenshtein(itemQuery, best.first.lowercase()) < itemQuery.length / 2 + 2)
+            "${best.first} costs ${best.second}."
+        else
+            "I couldn't find \"$itemQuery\" in the menu. Available items:\n" +
+                    pairs.joinToString("\n") { "• ${it.first} — ${it.second}" }
+    }
+
+    private fun checkAvailability(lines: List<OcrHelper.StructuredLine>, query: String): String {
+        val pairs = extractPairs(lines)
+        val items = if (pairs.isNotEmpty()) pairs.map { it.first } else extractItemsOnly(lines)
+        // Heuristic: last significant word cluster in the query is the item being asked about
+        val stopWords = setOf("is", "there", "do", "they", "have", "you", "any", "a", "an", "the")
+        val itemQuery = query.split(" ")
+            .filter { it.length > 2 && it !in stopWords }
+            .joinToString(" ")
+
+        val match = items.firstOrNull {
+            levenshtein(itemQuery.lowercase(), it.lowercase()) < itemQuery.length / 2 + 2
+        }
+        return if (match != null) {
+            val price = pairs.find { it.first == match }?.second
+            if (price != null) "Yes, $match is available at $price."
+            else "Yes, $match is available."
+        } else {
+            "I couldn't find that item on the menu."
+        }
+    }
+
 
     // -----------------------------------------------------------------------
     // Core structured line parser
@@ -1264,49 +2059,78 @@ object OcrQueryHandler {
      * (rightText is blank, but the next line's rightText has the price).
      */
     private fun extractPairs(lines: List<OcrHelper.StructuredLine>): List<Pair<String, String>> {
-        val results = mutableListOf<Pair<String, String>>()
+
+        // ── Strategy 1: Inline pairs (item + price on the same row) ──────────
+        val inlinePairs = mutableListOf<Pair<String, String>>()
         var pendingItem: String? = null
 
         for (line in lines) {
             val left  = line.leftText.trim()
             val right = line.rightText.trim()
-
             val leftHasPrice  = PRICE_REGEX.containsMatchIn(left)
             val rightHasPrice = PRICE_REGEX.containsMatchIn(right)
 
             when {
-                // Both columns present, right is the price
                 left.isNotBlank() && rightHasPrice && !leftHasPrice && !isNoise(left) -> {
-                    results.add(Pair(cleanItemName(left), right))
+                    inlinePairs.add(Pair(cleanItemName(left), cleanPrice(right)))
                     pendingItem = null
                 }
-                // Both columns present, but left also has a price (e.g. "Rs. 180/- Rs. 35/-")
-                // Skip these — they're probably header/footer rows
-                leftHasPrice && rightHasPrice -> {
-                    pendingItem = null
-                }
-                // Left only, no price — this is an item name, wait for next line's price
+                leftHasPrice && rightHasPrice -> { pendingItem = null }
                 left.isNotBlank() && right.isBlank() && !leftHasPrice && !isNoise(left) -> {
                     pendingItem = cleanItemName(left)
                 }
-                // Right only has price, pair with pending item
                 left.isBlank() && rightHasPrice && pendingItem != null -> {
-                    results.add(Pair(pendingItem!!, right))
+                    inlinePairs.add(Pair(pendingItem!!, cleanPrice(right)))
                     pendingItem = null
                 }
-                // Single column with price — this is a price-only line
                 leftHasPrice && right.isBlank() && pendingItem != null -> {
-                    results.add(Pair(pendingItem!!, left))
+                    inlinePairs.add(Pair(pendingItem!!, cleanPrice(left)))
                     pendingItem = null
                 }
-                else -> {
-                    // Header, noise, or unrecognized — reset pending
-                    if (isHeader(left) || isNoise(left)) pendingItem = null
+                else -> { if (isHeader(left) || isNoise(left)) pendingItem = null }
+            }
+        }
+        if (inlinePairs.isNotEmpty()) return inlinePairs
+
+        // ── Strategy 2: Two-block zipper ─────────────────────────────────────
+        // ML Kit reads the name column and price column as separate blocks.
+        // Headers (CHICKEN, MUTTON) must be EXCLUDED from item list but their
+        // row-count must still align with the price list, so we count carefully.
+
+        // Separate all lines into: items (orderable food names) vs prices
+        val itemLines = mutableListOf<String>()
+        val priceLines = mutableListOf<String>()
+
+        for (line in lines) {
+            val text = (line.leftText + line.rightText).trim()
+            when {
+                text.isBlank() -> { /* skip */ }
+                PRICE_REGEX.containsMatchIn(text) -> {
+                    // Extract ALL price tokens from this line (a line can have "210/- 170/-")
+                    PRICE_REGEX.findAll(text).forEach { priceLines.add(cleanPrice(it.value)) }
                 }
+                isNoise(text) -> { /* skip */ }
+                isHeader(text) -> { /* skip headers — don't add to items */ }
+                else -> itemLines.add(cleanItemName(text))
             }
         }
 
-        return results
+        android.util.Log.d("OcrQueryHandler",
+            "Zipper: ${itemLines.size} items, ${priceLines.size} prices")
+
+        if (itemLines.isNotEmpty() && priceLines.isNotEmpty()) {
+            // Zip by index up to the shorter list
+            return itemLines.zip(priceLines)
+        }
+
+        return emptyList()
+    }
+
+    private fun cleanPrice(raw: String): String {
+        // Normalize OCR noise: "21@/-" → "210/-", "2101-" → "210/-"
+        val cleaned = raw.replace("@", "0").replace(Regex("(\\d+)1-"), "$10/-")
+        val num = Regex("""[\d,]+""").find(cleaned)?.value?.replace(",", "") ?: return raw.trim()
+        return "₹$num/-"
     }
 
     private fun extractItemsOnly(lines: List<OcrHelper.StructuredLine>): List<String> {
@@ -1322,20 +2146,29 @@ object OcrQueryHandler {
     // -----------------------------------------------------------------------
 
     private fun isHeader(text: String): Boolean {
-        if (text.length > 30) return false
-        val stripped = text.replace(" ", "").replace(".", "")
-        return stripped == stripped.uppercase() && stripped.length < 20 && !stripped.any { it.isDigit() }
+        // Remove punctuation/brackets for comparison
+        val stripped = text.replace(Regex("[^A-Za-z0-9 ]"), "").trim()
+        if (stripped.isEmpty()) return true
+        // It's a header if: mostly uppercase AND no price AND short-ish
+        val upperRatio = stripped.count { it.isUpperCase() }.toFloat() / stripped.count { it.isLetter() }.coerceAtLeast(1)
+        return upperRatio >= 0.6f && !PRICE_REGEX.containsMatchIn(text) && stripped.length < 40
     }
 
     private fun isNoise(text: String): Boolean {
         if (text.length <= 2) return true
         if (text.contains(".com") || text.contains("http") || text.contains("www.")) return true
+        // Do NOT flag price-like strings as noise — "210/-" is valid data
+        if (PRICE_REGEX.containsMatchIn(text)) return false
         if (text.all { it.isDigit() || it in ".,/ -" }) return true
         return false
     }
 
     private fun cleanItemName(text: String): String =
-        text.trim().trimEnd('.', ',', ':', '-', ' ')
+        text.trim()
+            .trimStart('.', ',', ':', '-', '[', '(', ' ')
+            .trimEnd('.', ',', ':', '-', ']', ')', ' ')
+            .replace(Regex("^[^A-Za-z]+"), "")  // strip any leading non-letter garbage
+            .trim()
 
     /**
      * Extracts numeric value from a price string for comparison.
@@ -1346,11 +2179,22 @@ object OcrQueryHandler {
             .joinToString("") { it.value.replace(",", "") }
         return digits.toIntOrNull() ?: 0
     }
+
+    private fun levenshtein(a: String, b: String): Int {
+        val dp = Array(a.length + 1) { IntArray(b.length + 1) }
+        for (i in 0..a.length) dp[i][0] = i
+        for (j in 0..b.length) dp[0][j] = j
+        for (i in 1..a.length) for (j in 1..b.length) {
+            dp[i][j] = if (a[i - 1] == b[j - 1]) dp[i - 1][j - 1]
+            else 1 + minOf(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+        }
+        return dp[a.length][b.length]
+    }
 }
 
 ================================================================================
 # FILE: app\src\main\java\com\anurag\visionqa\ai\RealTokenizer.kt
-# LINES: 275
+# LINES: 248
 ================================================================================
 
 package com.anurag.visionqa.ai
@@ -1568,44 +2412,17 @@ class RealTokenizer(private val context: Context, tokenizerPath: String? = null)
 
     fun formatPrompt(
         question: String,
-        ocrText: String? = null,
+        ocrText: String? = null,     // kept for signature compatibility, ignored for visual queries
         systemPrompt: String? = null,
         isFollowUp: Boolean = false
     ): String {
-        val sb = StringBuilder()
-
-        // 1. Inject the OCR context if it exists (for the current image)
-        if (!isFollowUp && !ocrText.isNullOrBlank()) {
-            val sanitized = sanitizeOcrText(ocrText)
-            if (sanitized.isNotBlank()) {
-                sb.append("Text detected in the image:\n\"\"\"\n$sanitized\n\"\"\"\n\n")
-            }
-        }
-
-        // 2. The Diverse Few-Shot Examples (Only needed on the first turn)
-        if (!isFollowUp) {
-            sb.append("Here are some examples of how to answer concisely and accurately:\n\n")
-
-            // Example 1: Data Extraction (Menus, Receipts, Invoices)
-            sb.append("Example 1:\nQuestion: What is the price of the Veg Biryani?\nAnswer: The Veg Biryani is 180/-\n\n")
-
-            // Example 2: Visual Observation (Scenes, Objects, Colors)
-            sb.append("Example 2:\nQuestion: How many cars are parked on the street?\nAnswer: There are three cars parked on the street.\n\n")
-
-            // Example 3: Text in the wild (Signs, Books, Shirts)
-            sb.append("Example 3:\nQuestion: What does the yellow sign say?\nAnswer: The yellow sign says 'CAUTION: WET FLOOR'.\n\n")
-
-            // Example 4: Refusal / Hallucination prevention
-            sb.append("Example 4:\nQuestion: What is the man's name?\nAnswer: I cannot determine the man's name from the image.\n\n")
-        }
-
-        // 3. The actual user question
-        val safeQuestion = question.replace("\"", "'")
-        sb.append("Question: $safeQuestion\n\nAnswer:")
-
-        return "\n\n$sb"
+        // Since OCR questions are handled by OcrQueryHandler before reaching here,
+        // the VLM only receives pure visual questions ("What color is X?", "Describe the scene").
+        // Keeping the prompt minimal (<80 tokens) is critical for 1.8B model attention quality.
+        // No few-shot examples — they consumed ~200 tokens and caused context saturation.
+        val safeQuestion = question.replace("\"", "'").trim()
+        return "\n\nQuestion: $safeQuestion\n\nAnswer:"
     }
-
     // --- AND HERE ---
     private fun sanitizeOcrText(text: String): String {
         return text
@@ -1721,7 +2538,7 @@ class SimpleTokenizer {
 
 ================================================================================
 # FILE: app\src\main\java\com\anurag\visionqa\ai\VLMInterface.kt
-# LINES: 27
+# LINES: 28
 ================================================================================
 
 package com.anurag.visionqa.ai
@@ -1730,13 +2547,14 @@ import android.graphics.Bitmap
 
 interface VLMInterface {
     suspend fun initialize(): Boolean
+    // Overload for progress reporting during long loads
+    suspend fun initialize(onProgress: (String, Int) -> Unit): Boolean
     fun isReady(): Boolean
 
-    // UPDATE THIS FUNCTION SIGNATURE
     suspend fun chat(
         image: Bitmap,
         question: String,
-        systemPrompt: String? = null, // <-- ADD THIS LINE
+        systemPrompt: String? = null,
         conversationHistory: List<Pair<String, String>> = emptyList(),
         onTokenGenerated: ((String) -> Unit)? = null
     ): String
@@ -2137,7 +2955,7 @@ val Typography = Typography(
 
 ================================================================================
 # FILE: app\src\main\java\com\anurag\visionqa\ui\VisionQAScreen.kt
-# LINES: 481
+# LINES: 471
 ================================================================================
 
 package com.anurag.visionqa.ui
@@ -2176,7 +2994,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.anurag.visionqa.ai.MoondreamVLM
+
+import com.anurag.visionqa.ai.MiniCPMVLM
 import com.anurag.visionqa.ai.OcrHelper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -2326,7 +3145,7 @@ fun ChatBubble(
 fun VisionQAScreen() {
     val context      = LocalContext.current
     val scope        = rememberCoroutineScope()
-    val vlm          = remember { MoondreamVLM(context) }
+    val vlm          = remember { MiniCPMVLM(context) }
     val ocrHelper    = remember { OcrHelper() }
 
     val speechManager = remember { SpeechManager(context) }
@@ -2342,6 +3161,7 @@ fun VisionQAScreen() {
     var isInitializing by remember { mutableStateOf(true) }
     var isListening   by remember { mutableStateOf(false) }
     var downloadProgress by remember { mutableStateOf("") }
+    var downloadPercent by remember { mutableFloatStateOf(0f) }
     var inferenceJob  by remember { mutableStateOf<Job?>(null) }
     var loadingPhase  by remember { mutableStateOf("Initializing...") }
 
@@ -2377,14 +3197,20 @@ fun VisionQAScreen() {
 
     // Init VLM on launch
     LaunchedEffect(Unit) {
-        messages = listOf(ChatMessage(text = "🚀 Initializing Moondream2...\nChecking models (~1.6GB)...", isUser = false))
+        messages = listOf(ChatMessage(text = "🚀 Checking models on device...", isUser = false))
         scope.launch {
             try {
-                val ok = vlm.initialize { msg, prog -> downloadProgress = "$msg ($prog%)" }
+                // We capture BOTH the message and the integer percentage here
+                val ok = (vlm as MiniCPMVLM).initialize { msg, prog ->
+                    downloadProgress = msg
+                    downloadPercent = prog / 100f // Convert 0-100 to 0.0-1.0 for the UI
+                }
+
                 messages = if (ok)
                     listOf(ChatMessage(text = "✅ Ready!\n📸 Capture an image to begin.", isUser = false))
                 else
                     listOf(ChatMessage(text = "❌ Failed to initialize.", isUser = false))
+
                 isInitializing = false
                 downloadProgress = ""
             } catch (e: Exception) {
@@ -2392,6 +3218,12 @@ fun VisionQAScreen() {
                 isInitializing = false
             }
         }
+    }
+
+    val view = androidx.compose.ui.platform.LocalView.current
+    DisposableEffect(isInitializing) {
+        view.keepScreenOn = isInitializing
+        onDispose { view.keepScreenOn = false }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -2408,27 +3240,17 @@ fun VisionQAScreen() {
                 Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
 
                 // OCR badge — visible after capture if text was detected
-                if (cachedOcrResult != null) {
-                    Surface(
-                        modifier = Modifier.align(Alignment.BottomStart).padding(8.dp),
-                        color = Color.Black.copy(alpha = 0.65f),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = "📝 Text detected",
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
             } else {
                 CameraPreview(modifier = Modifier.fillMaxSize(), onImageCaptureReady = { imageCapture = it })
             }
         }
 
         if (downloadProgress.isNotEmpty()) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+            // By passing `progress`, the bar fills up instead of bouncing endlessly
+            LinearProgressIndicator(
+                progress = downloadPercent,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            )
             Text(
                 text = downloadProgress,
                 modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally),
@@ -2480,6 +3302,7 @@ fun VisionQAScreen() {
                 if (isProcessing) {
                     Button(
                         onClick = {
+                            (vlm as? MiniCPMVLM)?.abort()
                             inferenceJob?.cancel()
                             isProcessing = false
                             messages = messages.map {
@@ -2502,7 +3325,6 @@ fun VisionQAScreen() {
                                     // Clear everything for the new image
                                     capturedBitmap = null
                                     cachedOcrResult = null
-                                    vlm.resetChat()        // clears KV cache + image feature cache
                                     messages = emptyList()
                                 } else {
                                     val capture = imageCapture ?: return@Button
@@ -2514,7 +3336,7 @@ fun VisionQAScreen() {
                                                     val bmp = imageProxyToBitmap(image)
                                                     capturedBitmap = bmp
 
-                                                    // Run OCR in background immediately after capture.
+                                                    // Run OCR in background immediately after capture
                                                     scope.launch {
                                                         cachedOcrResult = try {
                                                             ocrHelper.extractText(bmp)
@@ -2547,8 +3369,6 @@ fun VisionQAScreen() {
                                 questionText = ""
                                 isProcessing = true
 
-                                vlm.clearTextMemory()
-
                                 val isFirstQuestion = messages.none { !it.isUser }
                                 messages = messages + ChatMessage(
                                     text = question, isUser = true,
@@ -2562,49 +3382,37 @@ fun VisionQAScreen() {
 
                                 inferenceJob = scope.launch {
                                     try {
-                                        // 1. Structure the OCR context using the spatial data from ML Kit
-                                        val structuredOcrContext = cachedOcrResult?.let { result ->
-                                            if (result.structuredLines.isNotEmpty()) {
-                                                // Joins the left/right parts with spaces, and rows with newlines
-                                                result.structuredLines.joinToString("\n") { it.fullText() }
-                                            } else {
-                                                result.rawText
+                                        val answer = vlm.chat(
+                                            image            = bitmap,
+                                            question         = question,
+                                            onTokenGenerated = { token ->
+                                                messages = messages.map {
+                                                    if (it.id == aiMsgId)
+                                                        it.copy(isLoading = false, text = it.text + token)
+                                                    else it
+                                                }
                                             }
-                                        }
-
-                                        // 2. Feed directly into the VLM (No middleman handler)
-                                        val answer = vlm.chatWithOcr(
-                                            image    = bitmap,
-                                            question = question,
-                                            ocrText  = structuredOcrContext
-                                        ) { token ->
-                                            messages = messages.map {
-                                                if (it.id == aiMsgId)
-                                                    it.copy(isLoading = false, text = it.text + token)
-                                                else it
-                                            }
-                                        }
-
-                                        android.util.Log.i("VISION_RESPONSE", "🤖 MODEL ANSWER:\n$answer")
-
+                                        )
+                                        android.util.Log.i("VISION_RESPONSE", "🤖 ANSWER:\n$answer")
                                         messages = messages.map {
                                             if (it.id == aiMsgId && it.text.isEmpty())
                                                 it.copy(isLoading = false, text = answer)
                                             else it
                                         }
-
                                     } catch (e: CancellationException) {
-                                        // User tapped Stop
+                                        // stopped
                                     } catch (e: Exception) {
                                         messages = messages.map {
                                             if (it.id == aiMsgId)
-                                                it.copy(isLoading = false, text = "❌ Error: ${e.message}")
+                                                it.copy(isLoading = false, text = "❌ ${e.message}")
                                             else it
                                         }
                                     } finally {
                                         isProcessing = false
                                     }
                                 }
+
+
                             }
                         ) { Text("Send") }
                     }

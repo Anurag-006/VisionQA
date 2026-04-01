@@ -14,15 +14,30 @@ kotlin {
     namespace = "com.anurag.visionqa"
     compileSdk = 36
 
-    defaultConfig {
-        applicationId = "com.anurag.visionqa"
-        minSdk = 24
-        targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        defaultConfig {
+            applicationId = "com.anurag.visionqa"
+            minSdk = 24
+            targetSdk = 36
+            versionCode = 1
+            versionName = "1.0"
 
-        // Remove ndk and externalNativeBuild sections completely
-    }
+            ndk {
+                abiFilters += "arm64-v8a"
+            }
+            externalNativeBuild {
+                cmake {
+                    cppFlags += "-std=c++17"
+                    arguments += "-DANDROID_STL=c++_shared"
+                }
+            }
+        }
+
+        externalNativeBuild {
+            cmake {
+                path = file("src/main/cpp/CMakeLists.txt")
+                version = "3.22.1"
+            }
+        }
 
     buildTypes {
         release {

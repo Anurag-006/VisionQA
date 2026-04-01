@@ -34,14 +34,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.anurag.visionqa.ai.MoondreamVLM
+
+import com.anurag.visionqa.ai.MiniCPMVLM
 import com.anurag.visionqa.ai.OcrHelper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
-import com.anurag.visionqa.ai.OcrQueryHandler
 import java.nio.ByteBuffer
 import java.util.UUID
 
@@ -185,7 +185,7 @@ fun ChatBubble(
 fun VisionQAScreen() {
     val context      = LocalContext.current
     val scope        = rememberCoroutineScope()
-    val vlm          = remember { MoondreamVLM(context) }
+    val vlm          = remember { MiniCPMVLM(context) }
     val ocrHelper    = remember { OcrHelper() }
 
     val speechManager = remember { SpeechManager(context) }
@@ -201,6 +201,7 @@ fun VisionQAScreen() {
     var isInitializing by remember { mutableStateOf(true) }
     var isListening   by remember { mutableStateOf(false) }
     var downloadProgress by remember { mutableStateOf("") }
+    var downloadPercent by remember { mutableFloatStateOf(0f) }
     var inferenceJob  by remember { mutableStateOf<Job?>(null) }
     var loadingPhase  by remember { mutableStateOf("Initializing...") }
 
@@ -236,14 +237,20 @@ fun VisionQAScreen() {
 
     // Init VLM on launch
     LaunchedEffect(Unit) {
-        messages = listOf(ChatMessage(text = "🚀 Initializing Moondream2...\nChecking models (~1.6GB)...", isUser = false))
+        messages = listOf(ChatMessage(text = "🚀 Checking models on device...", isUser = false))
         scope.launch {
             try {
-                val ok = vlm.initialize { msg, prog -> downloadProgress = "$msg ($prog%)" }
+                // We capture BOTH the message and the integer percentage here
+                val ok = (vlm as MiniCPMVLM).initialize { msg, prog ->
+                    downloadProgress = msg
+                    downloadPercent = prog / 100f // Convert 0-100 to 0.0-1.0 for the UI
+                }
+
                 messages = if (ok)
                     listOf(ChatMessage(text = "✅ Ready!\n📸 Capture an image to begin.", isUser = false))
                 else
                     listOf(ChatMessage(text = "❌ Failed to initialize.", isUser = false))
+
                 isInitializing = false
                 downloadProgress = ""
             } catch (e: Exception) {
@@ -251,6 +258,12 @@ fun VisionQAScreen() {
                 isInitializing = false
             }
         }
+    }
+
+    val view = androidx.compose.ui.platform.LocalView.current
+    DisposableEffect(isInitializing) {
+        view.keepScreenOn = isInitializing
+        onDispose { view.keepScreenOn = false }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -267,27 +280,17 @@ fun VisionQAScreen() {
                 Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
 
                 // OCR badge — visible after capture if text was detected
-                if (cachedOcrResult != null) {
-                    Surface(
-                        modifier = Modifier.align(Alignment.BottomStart).padding(8.dp),
-                        color = Color.Black.copy(alpha = 0.65f),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = "📝 Text detected",
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
             } else {
                 CameraPreview(modifier = Modifier.fillMaxSize(), onImageCaptureReady = { imageCapture = it })
             }
         }
 
         if (downloadProgress.isNotEmpty()) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+            // By passing `progress`, the bar fills up instead of bouncing endlessly
+            LinearProgressIndicator(
+                progress = downloadPercent,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            )
             Text(
                 text = downloadProgress,
                 modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally),
@@ -339,6 +342,7 @@ fun VisionQAScreen() {
                 if (isProcessing) {
                     Button(
                         onClick = {
+                            (vlm as? MiniCPMVLM)?.abort()
                             inferenceJob?.cancel()
                             isProcessing = false
                             messages = messages.map {
@@ -361,7 +365,6 @@ fun VisionQAScreen() {
                                     // Clear everything for the new image
                                     capturedBitmap = null
                                     cachedOcrResult = null
-                                    vlm.resetChat()        // clears KV cache + image feature cache
                                     messages = emptyList()
                                 } else {
                                     val capture = imageCapture ?: return@Button
@@ -373,7 +376,7 @@ fun VisionQAScreen() {
                                                     val bmp = imageProxyToBitmap(image)
                                                     capturedBitmap = bmp
 
-                                                    // Run OCR in background immediately after capture.
+                                                    // Run OCR in background immediately after capture
                                                     scope.launch {
                                                         cachedOcrResult = try {
                                                             ocrHelper.extractText(bmp)
@@ -406,8 +409,6 @@ fun VisionQAScreen() {
                                 questionText = ""
                                 isProcessing = true
 
-                                vlm.clearTextMemory()
-
                                 val isFirstQuestion = messages.none { !it.isUser }
                                 messages = messages + ChatMessage(
                                     text = question, isUser = true,
@@ -421,60 +422,35 @@ fun VisionQAScreen() {
 
                                 inferenceJob = scope.launch {
                                     try {
-                                        // ── TIER 1: OCR Interceptor (0–50ms) ──────────────────────────
-                                        // Try to answer from structured OCR data before touching the VLM.
-                                        val ocrAnswer = OcrQueryHandler.tryAnswer(question, cachedOcrResult)
-
-                                        if (ocrAnswer != null) {
-                                            // Fast path — answered without waking Moondream
-                                            android.util.Log.i("VISION_RESPONSE", "⚡ OCR INTERCEPTED:\n$ocrAnswer")
-                                            messages = messages.map {
-                                                if (it.id == aiMsgId)
-                                                    it.copy(isLoading = false, text = ocrAnswer)
-                                                else it
+                                        val answer = vlm.chat(
+                                            image            = bitmap,
+                                            question         = question,
+                                            onTokenGenerated = { token ->
+                                                messages = messages.map {
+                                                    if (it.id == aiMsgId)
+                                                        it.copy(isLoading = false, text = it.text + token)
+                                                    else it
+                                                }
                                             }
-                                            return@launch
-                                        }
-
-                                        // ── TIER 2: VLM (pure visual questions only) ───────────────────
-                                        // OCR couldn't answer — must be a visual context question.
-                                        // Do NOT inject the full OCR dump. Pass null so the model
-                                        // uses only its visual encoder (keeps prompt ≤ 80 tokens).
-                                        android.util.Log.i("VISION_RESPONSE", "🔮 Routing to VLM (visual question)")
-
-                                        val answer = vlm.chatWithOcr(
-                                            image    = bitmap,
-                                            question = question,
-                                            ocrText  = null   // ← intentionally null for visual questions
-                                        ) { token ->
-                                            messages = messages.map {
-                                                if (it.id == aiMsgId)
-                                                    it.copy(isLoading = false, text = it.text + token)
-                                                else it
-                                            }
-                                        }
-
-                                        android.util.Log.i("VISION_RESPONSE", "🤖 MODEL ANSWER:\n$answer")
-
+                                        )
+                                        android.util.Log.i("VISION_RESPONSE", "🤖 ANSWER:\n$answer")
                                         messages = messages.map {
                                             if (it.id == aiMsgId && it.text.isEmpty())
                                                 it.copy(isLoading = false, text = answer)
                                             else it
                                         }
-
                                     } catch (e: CancellationException) {
-                                        // User tapped Stop
+                                        // stopped
                                     } catch (e: Exception) {
                                         messages = messages.map {
                                             if (it.id == aiMsgId)
-                                                it.copy(isLoading = false, text = "❌ Error: ${e.message}")
+                                                it.copy(isLoading = false, text = "❌ ${e.message}")
                                             else it
                                         }
                                     } finally {
                                         isProcessing = false
                                     }
                                 }
-
 
 
                             }

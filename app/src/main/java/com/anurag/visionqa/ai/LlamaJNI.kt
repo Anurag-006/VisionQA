@@ -5,43 +5,21 @@ import android.util.Log
 object LlamaJNI {
     init {
         try {
-            Log.d("LlamaJNI", "--- Loading ggml-base ---")
             System.loadLibrary("ggml-base")
-            Log.d("LlamaJNI", "✅ ggml-base loaded")
-
-            Log.d("LlamaJNI", "--- Loading ggml-cpu ---")
             System.loadLibrary("ggml-cpu")
-            Log.d("LlamaJNI", "✅ ggml-cpu loaded")
-
-            Log.d("LlamaJNI", "--- Loading ggml core ---")
             System.loadLibrary("ggml")
-            Log.d("LlamaJNI", "✅ ggml loaded")
-
-            Log.d("LlamaJNI", "--- Loading llama ---")
             System.loadLibrary("llama")
-            Log.d("LlamaJNI", "✅ llama loaded")
-
-            Log.d("LlamaJNI", "--- Loading multimodal bridge (mtmd) ---")
             System.loadLibrary("mtmd")
-            Log.d("LlamaJNI", "✅ mtmd loaded")
-
-            Log.d("LlamaJNI", "--- Loading JNI wrapper (visionqa_jni) ---")
             System.loadLibrary("visionqa_jni")
-            Log.d("LlamaJNI", "✅ visionqa_jni loaded")
-
-            Log.d("LlamaJNI", "🎉 ALL modular native libraries loaded successfully")
-
+            Log.d("LlamaJNI", "✅ All native libraries loaded.")
         } catch (e: UnsatisfiedLinkError) {
             Log.e("LlamaJNI", "❌ LIBRARY LOAD FAILED: ${e.message}")
-            Log.e("LlamaJNI", "❌ Full error:", e)
         } catch (e: Exception) {
-            Log.e("LlamaJNI", "❌ Unexpected error loading libraries: ${e.message}", e)
+            Log.e("LlamaJNI", "❌ Unexpected error: ${e.message}", e)
         }
     }
-    /**
-     * Loads the language model and multimodal projector.
-     * Safe to call multiple times — frees existing state before reloading.
-     */
+
+    /** Loads the language model and multimodal projector. */
     external fun loadModel(
         modelPath:  String,
         mmprojPath: String,
@@ -53,10 +31,21 @@ object LlamaJNI {
      * Runs vision+language inference.
      * Blocks the calling thread — always call from Dispatchers.IO.
      *
+     * On the FIRST call per image, pass an empty string for [history].
+     * The C++ side will encode the image and save the KV cache position.
+     *
+     * On FOLLOW-UP calls, pass all prior assistant turns formatted as:
+     *   "<|im_start|>assistant\nANSWER<|im_end|>\n"
+     * The C++ side rewinds the cache to after the image and replays
+     * history as cheap text — skipping image re-encoding entirely.
+     *
+     * Call [resetCache] before the first question on a NEW image.
+     *
      * @param pixelData     Raw ARGB pixels from Bitmap.getPixels()
      * @param imageWidth    Width of the bitmap
      * @param imageHeight   Height of the bitmap
-     * @param prompt        User question — plain text, no template wrapping
+     * @param prompt        Current user question — plain text, no template wrapping
+     * @param history       All prior assistant turns formatted as template strings
      * @param maxTokens     Hard cap on output tokens
      * @param tokenCallback Called once per generated token piece for streaming
      */
@@ -65,19 +54,21 @@ object LlamaJNI {
         imageWidth:    Int,
         imageHeight:   Int,
         prompt:        String,
+        history:       String,
         maxTokens:     Int,
         tokenCallback: (ByteArray) -> Unit
     ): String
 
     /**
-     * Signals the C++ generation loop to stop immediately.
-     * Thread-safe — uses std::atomic internally, returns instantly.
+     * Rewinds the KV cache to the cold state.
+     * Call this when the user picks a new image so the next generate()
+     * re-encodes the new image from scratch.
      */
+    external fun resetCache()
+
+    /** Signals the C++ generation loop to stop immediately. Thread-safe. */
     external fun abortGeneration()
 
-    /**
-     * Frees all native model state.
-     * Blocks until any in-progress generation finishes.
-     */
+    /** Frees all native model state. */
     external fun freeModel()
 }

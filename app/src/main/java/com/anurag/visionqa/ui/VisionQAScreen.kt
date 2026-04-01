@@ -362,6 +362,7 @@ fun VisionQAScreen() {
                             enabled = !isInitializing,
                             onClick = {
                                 if (capturedBitmap != null) {
+                                    (vlm as? MiniCPMVLM)?.resetForNewImage()
                                     // Clear everything for the new image
                                     capturedBitmap = null
                                     cachedOcrResult = null
@@ -374,6 +375,7 @@ fun VisionQAScreen() {
                                             override fun onCaptureSuccess(image: ImageProxy) {
                                                 try {
                                                     val bmp = imageProxyToBitmap(image)
+                                                    (vlm as? MiniCPMVLM)?.resetForNewImage()
                                                     capturedBitmap = bmp
 
                                                     // Run OCR in background immediately after capture

@@ -299,7 +299,7 @@ class ExampleInstrumentedTest {
 
 ================================================================================
 # FILE: app\src\main\cpp\llama_jni.cpp
-# LINES: 372
+# LINES: 452
 ================================================================================
 
 #include <jni.h>
@@ -318,18 +318,48 @@ class ExampleInstrumentedTest {
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
-// ── Global state ──────────────────────────────────────────────────────────────
 static struct llama_model* g_model = nullptr;
 static struct llama_context* g_ctx   = nullptr;
 static struct mtmd_context* g_mtmd  = nullptr;
 static std::mutex            g_mutex;
 static std::atomic<bool>     g_abort{false};
 
+// ── Persistent KV-cache state ─────────────────────────────────────────────────
+// After the first call we save n_past at the point right after the image was
+// fully decoded into the KV cache. On follow-up turns we restore to this
+// position and only feed the new text history — skipping the expensive image
+// re-encoding entirely.
+static llama_pos g_n_past_after_image = -1;  // -1 = cache is cold
+
 static void free_all() {
     if (g_mtmd)  { mtmd_free(g_mtmd);         g_mtmd  = nullptr; }
     if (g_ctx)   { llama_free(g_ctx);          g_ctx   = nullptr; }
     if (g_model) { llama_model_free(g_model);  g_model = nullptr; }
-    LOGI("Model freed.");
+    g_n_past_after_image = -1;
+    LOGI("All resources freed.");
+}
+
+static jstring make_error(JNIEnv* env, const char* fmt, ...) {
+    char buf[512];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    LOGE("%s", buf);
+    return env->NewStringUTF(buf);
+}
+
+static jstring get_safe_utf8_string(JNIEnv* env, const char* data, size_t length) {
+    jbyteArray jBytes  = env->NewByteArray((jsize)length);
+    env->SetByteArrayRegion(jBytes, 0, (jsize)length, reinterpret_cast<const jbyte*>(data));
+    jclass    strClass = env->FindClass("java/lang/String");
+    jmethodID strCtor  = env->GetMethodID(strClass, "<init>", "([BLjava/lang/String;)V");
+    jstring   enc      = env->NewStringUTF("UTF-8");
+    jstring   result   = (jstring)env->NewObject(strClass, strCtor, jBytes, enc);
+    env->DeleteLocalRef(jBytes);
+    env->DeleteLocalRef(enc);
+    env->DeleteLocalRef(strClass);
+    return result;
 }
 
 extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM*, void*) {
@@ -341,7 +371,7 @@ extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM*, void*) {
     llama_backend_free();
 }
 
-// ── loadModel ─────────────────────────────────────────────────────────────────
+// ── loadModel ──────────────────────────────────────────────────────────────────
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_anurag_visionqa_ai_LlamaJNI_loadModel(
         JNIEnv* env, jobject,
@@ -349,49 +379,60 @@ Java_com_anurag_visionqa_ai_LlamaJNI_loadModel(
         jint nThreads, jint nCtx)
 {
     std::lock_guard<std::mutex> lock(g_mutex);
-    if (g_model || g_ctx || g_mtmd) free_all();
+    free_all();
 
     const char* m_path = env->GetStringUTFChars(modelPath,  nullptr);
     const char* v_path = env->GetStringUTFChars(mmprojPath, nullptr);
 
-    // 1. Load language model
-    llama_model_params mp = llama_model_default_params();
-    mp.n_gpu_layers = 0;
-    g_model = llama_model_load_from_file(m_path, mp);
-    if (!g_model) {
-        LOGE("llama_model_load_from_file failed.");
-        goto fail;
-    }
+    LOGI("Attempting to load Brain from: %s", m_path);
+    LOGI("Attempting to load Eyes from: %s", v_path);
 
-    // 2. Create context
-    {
-        llama_context_params cp = llama_context_default_params();
-        cp.n_ctx           = 4096;
-        cp.n_batch         = 512;   // Claude's safety limit for Redmi RAM
-        cp.n_threads       = (uint32_t)nThreads;
-        cp.n_threads_batch = (uint32_t)nThreads;
-        g_ctx = llama_init_from_model(g_model, cp);
-    }
-    if (!g_ctx) {
-        LOGE("llama_init_from_model failed.");
-        goto fail;
-    }
+    try {
+        // 1. Load model
+        llama_model_params mp = llama_model_default_params();
+        mp.n_gpu_layers = 0;
+        mp.use_mmap = true;  // Keep this false for stability on Android
+        mp.use_mlock = false;
 
-    // 3. Load vision encoder
-    {
-        struct mtmd_context_params mparams = mtmd_context_params_default();
-        mparams.n_threads = (int32_t)nThreads;
-        mparams.use_gpu   = false;
-        g_mtmd = mtmd_init_from_file(v_path, g_model, mparams);
-    }
-    if (!g_mtmd) {
-        LOGE("mtmd_init_from_file failed.");
+        g_model = llama_model_load_from_file(m_path, mp);
+        if (!g_model) { LOGE("❌ Model load failed (returned nullptr)."); goto fail; }
+
+        // 2. Create context
+        {
+            llama_context_params cp = llama_context_default_params();
+            cp.n_ctx           = (uint32_t)nCtx;
+            cp.n_batch         = 512;
+            cp.n_threads       = (uint32_t)nThreads;
+            cp.n_threads_batch = (uint32_t)nThreads;
+            g_ctx = llama_init_from_model(g_model, cp);
+        }
+        if (!g_ctx) { LOGE("❌ Context init failed."); goto fail; }
+
+        // 3. Load vision encoder
+        {
+            mtmd_context_params mparams = mtmd_context_params_default();
+            mparams.n_threads = (int32_t)nThreads;
+            mparams.use_gpu   = false;
+            g_mtmd = mtmd_init_from_file(v_path, g_model, mparams);
+        }
+        if (!g_mtmd) { LOGE("❌ MTMD init failed (returned nullptr)."); goto fail; }
+
+        const llama_vocab* vocab = llama_model_get_vocab(g_model);
+        LOGI("✅ Model ready | n_vocab=%d n_embd=%d ctx=%d",
+             llama_vocab_n_tokens(vocab),
+             llama_model_n_embd(g_model),
+             nCtx);
+
+    } catch (const std::exception& e) {
+        LOGE("💥 CRITICAL C++ EXCEPTION: %s", e.what());
+        goto fail;
+    } catch (...) {
+        LOGE("💥 CRITICAL UNKNOWN C++ EXCEPTION");
         goto fail;
     }
 
     env->ReleaseStringUTFChars(modelPath,  m_path);
     env->ReleaseStringUTFChars(mmprojPath, v_path);
-    LOGI("✅ Model ready. ctx=4096 batch=512");
     return JNI_TRUE;
 
     fail:
@@ -401,66 +442,64 @@ Java_com_anurag_visionqa_ai_LlamaJNI_loadModel(
     return JNI_FALSE;
 }
 
-// ── Helper: decode a batch of tokens, returns false on failure ────────────────
+// ── resetCache — call this when the user picks a NEW image ────────────────────
+extern "C" JNIEXPORT void JNICALL
+Java_com_anurag_visionqa_ai_LlamaJNI_resetCache(JNIEnv*, jobject) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    // FIX: Replaced with the new Memory API
+    if (g_ctx) llama_memory_clear(llama_get_memory(g_ctx), true);
+    g_n_past_after_image = -1;
+    LOGI("KV cache reset. Next generate() will re-encode the image.");
+}
+
+// ── decode helpers ─────────────────────────────────────────────────────────────
 static bool decode_text_batch(
         const llama_token* toks, size_t n_toks,
         llama_pos& n_past, bool need_logits)
 {
-    const size_t BATCH_SIZE = 512;
-    for (size_t offset = 0; offset < n_toks; offset += BATCH_SIZE) {
-        size_t chunk = std::min(BATCH_SIZE, n_toks - offset);
-        bool last_chunk = (offset + chunk >= n_toks);
+    const size_t BATCH = 512;
+    for (size_t off = 0; off < n_toks; off += BATCH) {
+        size_t chunk = std::min(BATCH, n_toks - off);
+        bool   last  = (off + chunk >= n_toks);
 
-        llama_batch batch = llama_batch_init((int32_t)chunk, 0, 1);
-        batch.n_tokens = (int32_t)chunk;
+        llama_batch b = llama_batch_init((int32_t)chunk, 0, 1);
+        b.n_tokens = (int32_t)chunk;
         for (size_t j = 0; j < chunk; j++) {
-            batch.token[j]      = toks[offset + j];
-            batch.pos[j]        = n_past + (llama_pos)j;
-            batch.n_seq_id[j]   = 1;
-            batch.seq_id[j][0]  = 0;
-            batch.logits[j]     = (last_chunk && j == chunk - 1 && need_logits) ? 1 : 0;
+            b.token[j]     = toks[off + j];
+            b.pos[j]       = n_past + (llama_pos)j;
+            b.n_seq_id[j]  = 1;
+            b.seq_id[j][0] = 0;
+            b.logits[j]    = (last && j == chunk - 1 && need_logits) ? 1 : 0;
         }
-
-        int ret = llama_decode(g_ctx, batch);
-        llama_batch_free(batch);
-
-        if (ret != 0) {
-            LOGE("decode_text_batch failed at offset %zu, ret=%d", offset, ret);
-            return false;
-        }
+        int ret = llama_decode(g_ctx, b);
+        llama_batch_free(b);
+        if (ret != 0) { LOGE("decode_text_batch failed: ret=%d", ret); return false; }
         n_past += (llama_pos)chunk;
     }
     return true;
 }
 
-// ── Helper: decode image embeddings ──────────────────────────────────────────
 static bool decode_image_batch(
         float* embd, size_t n_toks, int32_t n_embd,
         llama_pos& n_past, bool need_logits)
 {
-    const size_t BATCH_SIZE = 512;
-    for (size_t offset = 0; offset < n_toks; offset += BATCH_SIZE) {
-        size_t chunk = std::min(BATCH_SIZE, n_toks - offset);
-        bool last_chunk = (offset + chunk >= n_toks);
+    const size_t BATCH = 512;
+    for (size_t off = 0; off < n_toks; off += BATCH) {
+        size_t chunk = std::min(BATCH, n_toks - off);
+        bool   last  = (off + chunk >= n_toks);
 
-        llama_batch batch = llama_batch_init((int32_t)chunk, n_embd, 1);
-        batch.n_tokens = (int32_t)chunk;
-        std::memcpy(batch.embd, embd + offset * n_embd, chunk * n_embd * sizeof(float));
-
+        llama_batch b = llama_batch_init((int32_t)chunk, n_embd, 1);
+        b.n_tokens = (int32_t)chunk;
+        std::memcpy(b.embd, embd + off * n_embd, chunk * n_embd * sizeof(float));
         for (size_t j = 0; j < chunk; j++) {
-            batch.pos[j]       = n_past + (llama_pos)j;
-            batch.n_seq_id[j]  = 1;
-            batch.seq_id[j][0] = 0;
-            batch.logits[j]    = (last_chunk && j == chunk - 1 && need_logits) ? 1 : 0;
+            b.pos[j]       = n_past + (llama_pos)j;
+            b.n_seq_id[j]  = 1;
+            b.seq_id[j][0] = 0;
+            b.logits[j]    = (last && j == chunk - 1 && need_logits) ? 1 : 0;
         }
-
-        int ret = llama_decode(g_ctx, batch);
-        llama_batch_free(batch);
-
-        if (ret != 0) {
-            LOGE("decode_image_batch failed at offset %zu, ret=%d", offset, ret);
-            return false;
-        }
+        int ret = llama_decode(g_ctx, b);
+        llama_batch_free(b);
+        if (ret != 0) { LOGE("decode_image_batch failed: ret=%d", ret); return false; }
         n_past += (llama_pos)chunk;
     }
     return true;
@@ -473,195 +512,236 @@ Java_com_anurag_visionqa_ai_LlamaJNI_generate(
         jintArray pixelData,
         jint imageWidth, jint imageHeight,
         jstring prompt,
+        jstring history,
         jint maxTokens,
         jobject tokenCallback)
 {
     std::lock_guard<std::mutex> lock(g_mutex);
+
     if (!g_model || !g_ctx || !g_mtmd)
-        return env->NewStringUTF("Error: Engine not ready.");
+        return make_error(env, "❌ Engine not ready. Please restart the app.");
+    if (imageWidth <= 0 || imageHeight <= 0)
+        return make_error(env, "❌ Invalid image dimensions: %dx%d", imageWidth, imageHeight);
+
+    const char* marker = mtmd_default_marker();
+    if (!marker || strlen(marker) == 0)
+        return make_error(env, "❌ Vision bridge marker empty. Incompatible library version.");
 
     g_abort.store(false);
 
     jclass    cb_class  = env->GetObjectClass(tokenCallback);
-    jmethodID cb_invoke = env->GetMethodID(cb_class, "invoke", "(Ljava/lang/Object;)Ljava/lang/Object;");
+    jmethodID cb_invoke = env->GetMethodID(cb_class, "invoke",
+                                           "(Ljava/lang/Object;)Ljava/lang/Object;");
     env->DeleteLocalRef(cb_class);
 
-    // 1. ARGB → RGB
-    jint* argb = env->GetIntArrayElements(pixelData, nullptr);
-    jsize  npx  = env->GetArrayLength(pixelData);
-    std::vector<uint8_t> rgb((size_t)npx * 3);
-    for (jsize i = 0; i < npx; i++) {
-        uint32_t px = (uint32_t)argb[i];
-        rgb[i*3+0]  = (px >> 16) & 0xFF;
-        rgb[i*3+1]  = (px >>  8) & 0xFF;
-        rgb[i*3+2]  =  px        & 0xFF;
-    }
-    env->ReleaseIntArrayElements(pixelData, argb, JNI_ABORT);
+    const char* raw_q   = env->GetStringUTFChars(prompt,  nullptr);
+    const char* raw_h   = env->GetStringUTFChars(history, nullptr);
+    std::string question = (raw_q && strlen(raw_q) > 0) ? raw_q : "Describe this image in detail.";
+    std::string hist_str = raw_h ? raw_h : "";
+    env->ReleaseStringUTFChars(prompt,  raw_q);
+    env->ReleaseStringUTFChars(history, raw_h);
 
-    struct mtmd_bitmap* bitmap = mtmd_bitmap_init((uint32_t)imageWidth, (uint32_t)imageHeight, rgb.data());
-    if (!bitmap) return env->NewStringUTF("Error: mtmd_bitmap_init failed.");
+    bool      is_first = (g_n_past_after_image < 0);
+    llama_pos n_past   = 0;
 
-    // 2. ChatML Prompt (Letting mtmd_tokenize handle the vision tags!)
-    const char* marker = mtmd_default_marker();
-    const char* raw_q  = env->GetStringUTFChars(prompt, nullptr);
+    // ════════════════════════════════════════════════════════════════════════
+    // PATH A — First turn: encode system prompt + image + first user question
+    // ════════════════════════════════════════════════════════════════════════
+    if (is_first) {
+        LOGI("PATH A — first turn, encoding image %dx%d", (int)imageWidth, (int)imageHeight);
 
-    std::string full_text =
-            "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
-            "<|im_start|>user\n"
-            + std::string(marker) + "\n"
-            + std::string(raw_q)
-            + "<|im_end|>\n"
-              "<|im_start|>assistant\n";
+        jint* argb = env->GetIntArrayElements(pixelData, nullptr);
+        jsize npx  = env->GetArrayLength(pixelData);
+        std::vector<uint8_t> rgb((size_t)npx * 3);
+        for (jsize i = 0; i < npx; i++) {
+            uint32_t px = (uint32_t)argb[i];
+            rgb[i*3+0]  = (px >> 16) & 0xFF;
+            rgb[i*3+1]  = (px >>  8) & 0xFF;
+            rgb[i*3+2]  =  px        & 0xFF;
+        }
+        env->ReleaseIntArrayElements(pixelData, argb, JNI_ABORT);
 
-    env->ReleaseStringUTFChars(prompt, raw_q);
-    LOGI("Prompt built. Marker: %s", marker);
+        mtmd_bitmap* bitmap = mtmd_bitmap_init(
+                (uint32_t)imageWidth, (uint32_t)imageHeight, rgb.data());
+        if (!bitmap)
+            return make_error(env, "❌ Image processing failed (%dx%d).", imageWidth, imageHeight);
 
-    // 3. Tokenize
-    struct mtmd_input_text itext = { full_text.c_str(), true, true };
-    struct mtmd_input_chunks* chunks = mtmd_input_chunks_init();
-    const struct mtmd_bitmap* bitmaps_list[1] = { bitmap };
+        std::string full_text =
+                "<|im_start|>system\n"
+                "You are an expert visual assistant. When shown an image, describe it "
+                "in full detail: identify every visible object, its color, size, position, "
+                "texture, and any text or branding. For follow-up questions, give complete "
+                "and specific answers directly referencing what you see in the image. "
+                "Never give one-word answers.<|im_end|>\n"
+                "<|im_start|>user\n"
+                + std::string(marker) + "\n"
+                + question + "<|im_end|>\n"
+                             "<|im_start|>assistant\n";
 
-    if (mtmd_tokenize(g_mtmd, chunks, &itext, bitmaps_list, 1) != 0) {
-        LOGE("mtmd_tokenize failed.");
+        mtmd_input_text itext = {
+                full_text.c_str(), /*add_special=*/true, /*parse_special=*/true
+        };
+        mtmd_input_chunks* chunks          = mtmd_input_chunks_init();
+        const mtmd_bitmap* bitmaps_list[1]    = { bitmap };
+
+        int tok_ret = mtmd_tokenize(g_mtmd, chunks, &itext, bitmaps_list, 1);
+        if (tok_ret != 0) {
+            mtmd_bitmap_free(bitmap);
+            mtmd_input_chunks_free(chunks);
+            return make_error(env,
+                              "❌ Tokenization failed (err=%d). ctx=%d img=%dx%d prompt_len=%zu.",
+                              tok_ret, (int)llama_n_ctx(g_ctx),
+                              (int)imageWidth, (int)imageHeight, full_text.size());
+        }
+
+        // FIX: Replaced with the new Memory API
+        llama_memory_clear(llama_get_memory(g_ctx), true);
+        n_past = 0;
+
+        bool        ok  = true;
+        std::string err;
+        size_t      nc  = mtmd_input_chunks_size(chunks);
+
+        for (size_t i = 0; i < nc && ok; i++) {
+            const mtmd_input_chunk* ch      = mtmd_input_chunks_get(chunks, i);
+            bool                    is_last = (i == nc - 1);
+
+            if (mtmd_input_chunk_get_type(ch) == MTMD_INPUT_CHUNK_TYPE_IMAGE) {
+                size_t n_img = mtmd_input_chunk_get_n_tokens(ch);
+                if (n_past + (llama_pos)n_img > (llama_pos)llama_n_ctx(g_ctx)) {
+                    char tmp[200];
+                    snprintf(tmp, sizeof(tmp),
+                             "❌ Context too small: need %zu image tokens, only %d free. ctx=%d",
+                             n_img, (int)(llama_n_ctx(g_ctx)-n_past), (int)llama_n_ctx(g_ctx));
+                    err = tmp; ok = false; break;
+                }
+                if (mtmd_encode_chunk(g_mtmd, ch) != 0) {
+                    err = "❌ Vision encoding failed. Try a different image."; ok = false; break;
+                }
+                float* embd   = mtmd_get_output_embd(g_mtmd);
+                int32_t n_embd = llama_model_n_embd_inp(g_model);
+                ok = decode_image_batch(embd, n_img, n_embd, n_past, is_last);
+                if (!ok) err = "❌ Image prefill decode failed.";
+            } else {
+                size_t             nt   = 0;
+                const llama_token* toks = mtmd_input_chunk_get_tokens_text(ch, &nt);
+                if (nt == 0) continue;
+                if (n_past + (llama_pos)nt > (llama_pos)llama_n_ctx(g_ctx)) {
+                    err = "❌ Context overflow on text. Try a shorter question."; ok = false; break;
+                }
+                ok = decode_text_batch(toks, nt, n_past, is_last);
+                if (!ok) err = "❌ Text prefill decode failed.";
+            }
+        }
+
         mtmd_bitmap_free(bitmap);
         mtmd_input_chunks_free(chunks);
-        return env->NewStringUTF("Error: Tokenization failed.");
-    }
+        if (!ok) return get_safe_utf8_string(env, err.c_str(), err.size());
 
-    size_t n_chunks = mtmd_input_chunks_size(chunks);
-    LOGI("Tokenized into %zu chunks.", n_chunks);
+        g_n_past_after_image = n_past;
+        LOGI("PATH A prefill done. n_past=%d saved as image anchor.", (int)n_past);
 
-    // 4. Prefill Pipeline (Using Claude's Batch Chunker)
-    llama_memory_clear(llama_get_memory(g_ctx), true);
-    llama_pos n_past = 0;
-    bool prefill_ok = true;
+        // ════════════════════════════════════════════════════════════════════════
+        // PATH B — Follow-up turn: rewind KV cache, feed text history only
+        // ════════════════════════════════════════════════════════════════════════
+    } else {
+        LOGI("PATH B — follow-up, reusing cache anchor at n_past=%d", (int)g_n_past_after_image);
 
-    for (size_t i = 0; i < n_chunks && prefill_ok; i++) {
-        const struct mtmd_input_chunk* chunk = mtmd_input_chunks_get(chunks, i);
-        bool is_last = (i == n_chunks - 1);
+        n_past = g_n_past_after_image;
 
-        if (mtmd_input_chunk_get_type(chunk) == MTMD_INPUT_CHUNK_TYPE_IMAGE) {
-            LOGI("Prefilling image chunk %zu...", i);
-
-            if (mtmd_encode_chunk(g_mtmd, chunk) != 0) {
-                LOGE("mtmd_encode_chunk failed on chunk %zu", i);
-                prefill_ok = false;
-                break;
-            }
-
-            float* embd   = mtmd_get_output_embd(g_mtmd);
-            size_t   n_toks = mtmd_input_chunk_get_n_tokens(chunk);
-            int32_t  n_embd = llama_model_n_embd_inp(g_model);
-
-            LOGI("Image = %zu visual tokens, n_embd=%d", n_toks, n_embd);
-
-            if (n_past + (llama_pos)n_toks > (llama_pos)llama_n_ctx(g_ctx)) {
-                LOGE("Context overflow: image needs %zu, only %d slots left", n_toks, (int)(llama_n_ctx(g_ctx) - n_past));
-                prefill_ok = false;
-                break;
-            }
-
-            prefill_ok = decode_image_batch(embd, n_toks, n_embd, n_past, is_last);
-
-        } else if (mtmd_input_chunk_get_type(chunk) == MTMD_INPUT_CHUNK_TYPE_TEXT) {
-            size_t n_toks = 0;
-            const llama_token* toks = mtmd_input_chunk_get_tokens_text(chunk, &n_toks);
-
-            LOGI("Prefilling text chunk %zu (%zu tokens)...", i, n_toks);
-
-            if (n_toks == 0) continue;
-
-            if (n_past + (llama_pos)n_toks > (llama_pos)llama_n_ctx(g_ctx)) {
-                LOGE("Context overflow: text needs %zu, only %d slots left", n_toks, (int)(llama_n_ctx(g_ctx) - n_past));
-                prefill_ok = false;
-                break;
-            }
-
-            prefill_ok = decode_text_batch(toks, n_toks, n_past, is_last);
+        if (!llama_memory_seq_rm(llama_get_memory(g_ctx), 0, n_past, -1)) {
+            LOGE("llama_memory_seq_rm failed — falling back to full clear");
+            g_n_past_after_image = -1;
+            return make_error(env, "❌ Cache rewind failed. Please send your question again.");
         }
+
+        std::string continuation =
+                hist_str
+                + "<|im_start|>user\n"
+                + question + "<|im_end|>\n"
+                             "<|im_start|>assistant\n";
+
+        LOGI("PATH B continuation len=%zu, n_past_start=%d",
+             continuation.size(), (int)n_past);
+
+        const llama_vocab* vocab_b = llama_model_get_vocab(g_model);
+        std::vector<llama_token> toks(continuation.size() + 64);
+        int ntok = llama_tokenize(
+                vocab_b,
+                continuation.c_str(), (int32_t)continuation.size(),
+                toks.data(), (int32_t)toks.size(),
+                /*add_special=*/false,  // BOS already baked in from PATH A
+                /*parse_special=*/true
+        );
+        if (ntok < 0) {
+            toks.resize(-ntok + 16);
+            ntok = llama_tokenize(vocab_b,
+                                  continuation.c_str(), (int32_t)continuation.size(),
+                                  toks.data(), (int32_t)toks.size(), false, true);
+        }
+        if (ntok <= 0)
+            return make_error(env, "❌ Follow-up tokenization failed (n=%d).", ntok);
+
+        if (n_past + (llama_pos)ntok > (llama_pos)llama_n_ctx(g_ctx))
+            return make_error(env,
+                              "❌ Context full (%d/%d tokens used). Please start a new conversation.",
+                              (int)(n_past + ntok), (int)llama_n_ctx(g_ctx));
+
+        if (!decode_text_batch(toks.data(), (size_t)ntok, n_past, true))
+            return make_error(env, "❌ Follow-up prefill failed.");
+
+        LOGI("PATH B prefill done. n_past=%d", (int)n_past);
     }
 
-    mtmd_bitmap_free(bitmap);
-    mtmd_input_chunks_free(chunks);
+    // ── Generation loop (identical for both paths) ────────────────────────────
+    const llama_vocab* vocab = llama_model_get_vocab(g_model);
 
-    if (!prefill_ok) {
-        return env->NewStringUTF("Error: Prefill failed.");
-    }
+    llama_sampler_chain_params sparams = llama_sampler_chain_default_params();
+    llama_sampler* smpl = llama_sampler_chain_init(sparams);
 
-    LOGI("Prefill complete. n_past=%d. Starting generation...", (int)n_past);
-
-    // 5. Official Sampling & Generation
-    const struct llama_vocab* vocab = llama_model_get_vocab(g_model);
-
-    // Use the official sampler chain (no manual logit modification!)
-    struct llama_sampler_chain_params sparams = llama_sampler_chain_default_params();
-    struct llama_sampler * smpl = llama_sampler_chain_init(sparams);
-
-    llama_sampler_chain_add(smpl, llama_sampler_init_penalties(64, 1.05f, 0.0f, 0.0f)); // 1.05 keeps it creative but on-topic
-    llama_sampler_chain_add(smpl, llama_sampler_init_top_k(40));
+    llama_sampler_chain_add(smpl, llama_sampler_init_penalties(64, 1.05f, 0.0f, 0.0f));
     llama_sampler_chain_add(smpl, llama_sampler_init_top_p(0.9f, 1));
-    llama_sampler_chain_add(smpl, llama_sampler_init_temp(0.4f));
-    llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+    llama_sampler_chain_add(smpl, llama_sampler_init_temp(0.7f));
+    llama_sampler_chain_add(smpl, llama_sampler_init_dist((uint32_t)-1));
 
     std::string result;
-    result.reserve(512);
+    result.reserve(1024);
 
     for (int step = 0; step < (int)maxTokens; step++) {
-        if (g_abort.load()) { LOGI("Aborted at step %d", step); break; }
-        if (n_past >= (llama_pos)llama_n_ctx(g_ctx)) { LOGI("Context full."); break; }
+        if (g_abort.load() || n_past >= (llama_pos)llama_n_ctx(g_ctx)) break;
 
-        // Use the official sampler to pick the next token
-        llama_token best_id = llama_sampler_sample(smpl, g_ctx, -1);
-        llama_sampler_accept(smpl, best_id); // Enforce repetition penalties naturally
+        llama_token id = llama_sampler_sample(smpl, g_ctx, -1);
+        llama_sampler_accept(smpl, id);
 
-        if (llama_vocab_is_eog(vocab, best_id)) {
-            LOGI("EOS at step %d", step);
-            break;
-        }
+        if (llama_vocab_is_eog(vocab, id)) { LOGI("EOS at step %d", step); break; }
 
-        // Decode token to text
         char piece[256] = {};
-        int plen = llama_token_to_piece(vocab, best_id, piece, sizeof(piece), 0, true);
+        int  plen = llama_token_to_piece(vocab, id, piece, sizeof(piece), 0, true);
+        if (plen <= 0) { LOGE("Bad piece at step %d id=%d", step, id); break; }
 
-        // 🚨 CRITICAL FIX: Only break if extraction failed entirely. Do NOT break on 0-length tokens!
-        if (plen < 0) {
-            LOGE("Token piece extraction failed at step %d", step);
-            break;
-        }
+        result.append(piece, (size_t)plen);
 
-        // Only stream to UI if it has a visible text value
-        if (plen > 0) {
-            std::string ps(piece, (size_t)plen);
-            result += ps;
+        jbyteArray jb = env->NewByteArray(plen);
+        env->SetByteArrayRegion(jb, 0, plen, (const jbyte*)piece);
+        env->CallObjectMethod(tokenCallback, cb_invoke, jb);
+        env->DeleteLocalRef(jb);
+        if (env->ExceptionCheck()) env->ExceptionClear();
 
-            jbyteArray jBytes = env->NewByteArray(plen);
-            env->SetByteArrayRegion(jBytes, 0, plen, (const jbyte*)piece);
-            env->CallObjectMethod(tokenCallback, cb_invoke, jBytes);
-            env->DeleteLocalRef(jBytes);
-        }
-
-        // Always feed the token back into the engine, even if plen == 0
-        llama_batch nb = llama_batch_init(1, 0, 1);
+        llama_batch nb  = llama_batch_init(1, 0, 1);
         nb.n_tokens     = 1;
-        nb.token[0]     = best_id;
+        nb.token[0]     = id;
         nb.pos[0]       = n_past++;
         nb.n_seq_id[0]  = 1;
         nb.seq_id[0][0] = 0;
-        nb.logits[0]    = 1; // Always ask for logits on the next loop
-
+        nb.logits[0]    = 1;
         int ret = llama_decode(g_ctx, nb);
         llama_batch_free(nb);
-
-        if (ret != 0) {
-            LOGE("Decode failed at step %d, ret=%d", step, ret);
-            break;
-        }
+        if (ret != 0) { LOGE("llama_decode failed at step %d ret=%d", step, ret); break; }
     }
 
     llama_sampler_free(smpl);
-
-    LOGI("Generation done. result length=%zu", result.size());
-    return env->NewStringUTF(result.c_str());
+    LOGI("Generation done. %zu chars. final n_past=%d", result.size(), (int)n_past);
+    return get_safe_utf8_string(env, result.c_str(), result.length());
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -692,7 +772,7 @@ fun runFakeAI(bitmap: Bitmap, question: String): String {
 
 ================================================================================
 # FILE: app\src\main\java\com\anurag\visionqa\ai\LlamaJNI.kt
-# LINES: 83
+# LINES: 74
 ================================================================================
 
 package com.anurag.visionqa.ai
@@ -702,43 +782,21 @@ import android.util.Log
 object LlamaJNI {
     init {
         try {
-            Log.d("LlamaJNI", "--- Loading ggml-base ---")
             System.loadLibrary("ggml-base")
-            Log.d("LlamaJNI", "✅ ggml-base loaded")
-
-            Log.d("LlamaJNI", "--- Loading ggml-cpu ---")
             System.loadLibrary("ggml-cpu")
-            Log.d("LlamaJNI", "✅ ggml-cpu loaded")
-
-            Log.d("LlamaJNI", "--- Loading ggml core ---")
             System.loadLibrary("ggml")
-            Log.d("LlamaJNI", "✅ ggml loaded")
-
-            Log.d("LlamaJNI", "--- Loading llama ---")
             System.loadLibrary("llama")
-            Log.d("LlamaJNI", "✅ llama loaded")
-
-            Log.d("LlamaJNI", "--- Loading multimodal bridge (mtmd) ---")
             System.loadLibrary("mtmd")
-            Log.d("LlamaJNI", "✅ mtmd loaded")
-
-            Log.d("LlamaJNI", "--- Loading JNI wrapper (visionqa_jni) ---")
             System.loadLibrary("visionqa_jni")
-            Log.d("LlamaJNI", "✅ visionqa_jni loaded")
-
-            Log.d("LlamaJNI", "🎉 ALL modular native libraries loaded successfully")
-
+            Log.d("LlamaJNI", "✅ All native libraries loaded.")
         } catch (e: UnsatisfiedLinkError) {
             Log.e("LlamaJNI", "❌ LIBRARY LOAD FAILED: ${e.message}")
-            Log.e("LlamaJNI", "❌ Full error:", e)
         } catch (e: Exception) {
-            Log.e("LlamaJNI", "❌ Unexpected error loading libraries: ${e.message}", e)
+            Log.e("LlamaJNI", "❌ Unexpected error: ${e.message}", e)
         }
     }
-    /**
-     * Loads the language model and multimodal projector.
-     * Safe to call multiple times — frees existing state before reloading.
-     */
+
+    /** Loads the language model and multimodal projector. */
     external fun loadModel(
         modelPath:  String,
         mmprojPath: String,
@@ -750,10 +808,21 @@ object LlamaJNI {
      * Runs vision+language inference.
      * Blocks the calling thread — always call from Dispatchers.IO.
      *
+     * On the FIRST call per image, pass an empty string for [history].
+     * The C++ side will encode the image and save the KV cache position.
+     *
+     * On FOLLOW-UP calls, pass all prior assistant turns formatted as:
+     *   "<|im_start|>assistant\nANSWER<|im_end|>\n"
+     * The C++ side rewinds the cache to after the image and replays
+     * history as cheap text — skipping image re-encoding entirely.
+     *
+     * Call [resetCache] before the first question on a NEW image.
+     *
      * @param pixelData     Raw ARGB pixels from Bitmap.getPixels()
      * @param imageWidth    Width of the bitmap
      * @param imageHeight   Height of the bitmap
-     * @param prompt        User question — plain text, no template wrapping
+     * @param prompt        Current user question — plain text, no template wrapping
+     * @param history       All prior assistant turns formatted as template strings
      * @param maxTokens     Hard cap on output tokens
      * @param tokenCallback Called once per generated token piece for streaming
      */
@@ -762,26 +831,28 @@ object LlamaJNI {
         imageWidth:    Int,
         imageHeight:   Int,
         prompt:        String,
+        history:       String,
         maxTokens:     Int,
         tokenCallback: (ByteArray) -> Unit
     ): String
 
     /**
-     * Signals the C++ generation loop to stop immediately.
-     * Thread-safe — uses std::atomic internally, returns instantly.
+     * Rewinds the KV cache to the cold state.
+     * Call this when the user picks a new image so the next generate()
+     * re-encodes the new image from scratch.
      */
+    external fun resetCache()
+
+    /** Signals the C++ generation loop to stop immediately. Thread-safe. */
     external fun abortGeneration()
 
-    /**
-     * Frees all native model state.
-     * Blocks until any in-progress generation finishes.
-     */
+    /** Frees all native model state. */
     external fun freeModel()
 }
 
 ================================================================================
 # FILE: app\src\main\java\com\anurag\visionqa\ai\MiniCPMDownloader.kt
-# LINES: 139
+# LINES: 145
 ================================================================================
 
 package com.anurag.visionqa.ai
@@ -804,89 +875,97 @@ class MiniCPMDownloader(private val context: Context) {
         .writeTimeout(300, TimeUnit.SECONDS)
         .build()
 
-    private val modelDir = context.getExternalFilesDir("minicpm") ?: File(context.filesDir, "minicpm")
+    val modelDir = File(context.getExternalFilesDir(null), "minicpm")
 
     companion object {
         private const val TAG = "MiniCPMDownloader"
 
-        // 🚨 TEMPORARY REDMI TEST URLS (Qwen2-VL 2B) 🚨
-        private const val BRAIN_URL = "https://huggingface.co/ggml-org/Qwen2-VL-2B-Instruct-GGUF/resolve/main/Qwen2-VL-2B-Instruct-Q4_K_M.gguf"
-        private const val EYES_URL = "https://huggingface.co/ggml-org/Qwen2-VL-2B-Instruct-GGUF/resolve/main/mmproj-Qwen2-VL-2B-Instruct-Q8_0.gguf"
-    }
+        // MiniCPM-V 2.0 Q4_K_M — ~1.9GB model, ~400MB mmproj
+        // Works on Redmi 13 5G (8GB) AND iQOO Neo 10 (16GB)
+        private const val BRAIN_URL = "https://huggingface.co/openbmb/MiniCPM-V-2_6-gguf/resolve/main/ggml-model-Q4_K_M.gguf"
+        private const val EYES_URL  = "https://huggingface.co/openbmb/MiniCPM-V-2_6-gguf/resolve/main/mmproj-model-f16.gguf"        // Exact filenames the loader expects — do not change these
+        private const val LOCAL_BRAIN = "ggml-model-Q4_K_M.gguf"
+        private const val LOCAL_EYES  = "mmproj-model-f16.gguf"
+
+        // MiniCPM-V 2.0 Q4_K_M sizes:
+        // Brain: ~1.85GB  →  min check: 1.8GB
+        // Eyes:  ~390MB   →  min check: 350MB
+        private const val MIN_BRAIN_BYTES = 4_000_000_000L
+        private const val MIN_EYES_BYTES  =   800_000_000L    }
 
     init {
-        if (!modelDir.exists()) {
-            modelDir.mkdirs()
-        }
+        if (!modelDir.exists()) modelDir.mkdirs()
     }
 
     suspend fun downloadIfNeeded(
         onProgress: (String, Int) -> Unit
     ): Boolean = withContext(Dispatchers.IO) {
 
-        val brainFile = File(modelDir, "ggml-model-Q4_K_M.gguf")
-        val eyesFile = File(modelDir, "mmproj-model-f16.gguf")
+        val brainFile = File(modelDir, LOCAL_BRAIN)
+        val eyesFile  = File(modelDir, LOCAL_EYES)
 
         if (modelsExist()) {
-            onProgress("Models ready (~1.7GB)", 100)
+            Log.d(TAG, "✅ Models already present.")
+            onProgress("MiniCPM-V 2.0 ready (~2.2GB)", 100)
             return@withContext true
         }
 
+        Log.d(TAG, "Starting download. Dir: ${modelDir.absolutePath}")
+
         try {
-            // 1. Download the Brain (986 MB)
-            if (!brainFile.exists() || brainFile.length() < 900_000_000L) {
-                onProgress("Downloading Qwen Brain (986MB)...", 0)
+            // 1. Download Brain (~1.85GB)
+            if (!brainFile.exists() || brainFile.length() < MIN_BRAIN_BYTES) {
+                onProgress("Downloading MiniCPM Brain (~1.85GB)...", 0)
+                Log.d(TAG, "Downloading brain from: $BRAIN_URL")
                 downloadFile(
-                    url = BRAIN_URL,
+                    url         = BRAIN_URL,
                     destination = brainFile,
-                    onProgress = { p -> onProgress("Brain: $p%", (p * 0.6).toInt()) }
+                    onProgress  = { p -> onProgress("Brain: $p%", (p * 0.75).toInt()) }
                 )
+                Log.d(TAG, "Brain downloaded: ${brainFile.length() / 1_000_000}MB")
             }
 
-            // 2. Download the Eyes (710 MB)
-            if (!eyesFile.exists() || eyesFile.length() < 700_000_000L) {
-                onProgress("Downloading Vision Projector (710MB)...", 60)
+            // 2. Download Eyes (~390MB)
+            if (!eyesFile.exists() || eyesFile.length() < MIN_EYES_BYTES) {
+                onProgress("Downloading Vision Projector (~390MB)...", 75)
+                Log.d(TAG, "Downloading mmproj from: $EYES_URL")
                 downloadFile(
-                    url = EYES_URL,
+                    url         = EYES_URL,
                     destination = eyesFile,
-                    onProgress = { p -> onProgress("Eyes: $p%", 60 + (p * 0.4).toInt()) }
+                    onProgress  = { p -> onProgress("Vision: $p%", 75 + (p * 0.25).toInt()) }
                 )
+                Log.d(TAG, "Eyes downloaded: ${eyesFile.length() / 1_000_000}MB")
             }
 
-            Log.d(TAG, "✅ All GGUF downloads complete!")
-            onProgress("Download complete! Ready to Initialize.", 100)
+            Log.d(TAG, "✅ All MiniCPM-V 2.0 downloads complete!")
+            onProgress("Download complete! Initializing model...", 100)
             true
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Download failed", e)
+            Log.e(TAG, "❌ Download failed: ${e.message}", e)
             onProgress("Download failed: ${e.message}", 0)
-            if (brainFile.length() < 900_000_000L) brainFile.delete()
-            if (eyesFile.length() < 700_000_000L) eyesFile.delete()
+            // Clean up partial files so next launch retries
+            if (brainFile.exists() && brainFile.length() < MIN_BRAIN_BYTES) brainFile.delete()
+            if (eyesFile.exists()  && eyesFile.length()  < MIN_EYES_BYTES)  eyesFile.delete()
             false
         }
     }
 
-    private fun downloadFile(
-        url: String,
-        destination: File,
-        onProgress: (Int) -> Unit
-    ) {
-        Log.d(TAG, "Starting download: $url")
-        val request = Request.Builder().url(url).build()
+    private fun downloadFile(url: String, destination: File, onProgress: (Int) -> Unit) {
+        val request  = Request.Builder().url(url).build()
         val response = client.newCall(request).execute()
 
         if (!response.isSuccessful) throw Exception("HTTP ${response.code}: ${response.message}")
 
-        val body = response.body ?: throw Exception("Empty response body")
+        val body          = response.body ?: throw Exception("Empty response body")
         val contentLength = body.contentLength()
 
         body.byteStream().use { input ->
             FileOutputStream(destination).use { output ->
-                val buffer = ByteArray(64 * 1024) // 64KB buffer for faster writing
-                var totalBytes = 0L
+                val buffer      = ByteArray(128 * 1024) // 128KB chunks
+                var totalBytes  = 0L
                 var bytes: Int
-                var lastProgress = 0
-                var lastLogTime = System.currentTimeMillis()
+                var lastProgress = -1
 
                 while (input.read(buffer).also { bytes = it } != -1) {
                     output.write(buffer, 0, bytes)
@@ -894,12 +973,9 @@ class MiniCPMDownloader(private val context: Context) {
 
                     if (contentLength > 0) {
                         val progress = ((totalBytes * 100) / contentLength).toInt()
-                        val now = System.currentTimeMillis()
-
-                        if (progress >= lastProgress + 1 || now - lastLogTime > 1000) {
+                        if (progress != lastProgress) {
                             onProgress(progress)
                             lastProgress = progress
-                            lastLogTime = now
                         }
                     }
                 }
@@ -910,23 +986,24 @@ class MiniCPMDownloader(private val context: Context) {
     }
 
     fun modelsExist(): Boolean {
-        val brain = File(modelDir, "ggml-model-Q4_K_M.gguf")
-        val eyes = File(modelDir, "mmproj-model-f16.gguf")
-
-        // Qwen Validation: Brain > 900MB, Eyes > 700MB
-        return brain.exists() && brain.length() > 900_000_000L &&
-                eyes.exists() && eyes.length() > 700_000_000L
+        val brain = File(modelDir, LOCAL_BRAIN)
+        val eyes  = File(modelDir, LOCAL_EYES)
+        val ok = brain.exists() && brain.length() >= MIN_BRAIN_BYTES &&
+                eyes.exists()  && eyes.length()  >= MIN_EYES_BYTES
+        Log.d(TAG, "modelsExist=$ok brain=${brain.length()/1_000_000}MB eyes=${eyes.length()/1_000_000}MB")
+        return ok
     }
 
     fun deleteModels() {
-        File(modelDir, "ggml-model-Q4_K_M.gguf").delete()
-        File(modelDir, "mmproj-model-f16.gguf").delete()
+        File(modelDir, LOCAL_BRAIN).delete()
+        File(modelDir, LOCAL_EYES).delete()
+        Log.d(TAG, "Models deleted.")
     }
 }
 
 ================================================================================
 # FILE: app\src\main\java\com\anurag\visionqa\ai\MiniCPMVLM.kt
-# LINES: 144
+# LINES: 193
 ================================================================================
 
 package com.anurag.visionqa.ai
@@ -941,17 +1018,33 @@ import java.io.File
 class MiniCPMVLM(private val context: Context) : VLMInterface {
 
     private var ready = false
-    // 1. Initialize the downloader
     private val downloader = MiniCPMDownloader(context)
 
+    // Conversation history stored as formatted turn strings.
+    // Each entry is ONE complete exchange: the assistant reply to a prior question.
+    // Format per entry: "<|im_start|>assistant\nANSWER<|im_end|>\n<|im_start|>user\nNEXT_Q<|im_end|>\n"
+    // The C++ side receives the full concatenation of all entries as `history`.
+    private val conversationHistory = mutableListOf<String>()
+    private var lastAnswer = ""
+
     companion object {
-        private const val TAG           = "MiniCPMVLM"
-        private const val MODEL_FILE    = "ggml-model-Q4_K_M.gguf"
-        private const val MMPROJ_FILE   = "mmproj-model-f16.gguf"
-        private const val MODEL_SUBDIR  = "minicpm"
-        private const val N_THREADS     = 4
-        private const val N_CTX         = 2048
-        private const val MAX_TOKENS    = 512
+        private const val TAG          = "MiniCPMVLM"
+        private const val MODEL_FILE   = "ggml-model-Q4_K_M.gguf"
+        private const val MMPROJ_FILE  = "mmproj-model-f16.gguf"
+        private const val MODEL_SUBDIR = "minicpm"
+
+        // 4 threads is the sweet spot on most Android SoCs.
+        // More threads = cache contention = slower, not faster.
+        private const val N_THREADS    = 4
+
+        // 4096 gives: ~1024 image tokens + ~50 system/prompt + ~512 answer headroom
+        // per turn, with room for several follow-ups before context fills.
+        private const val N_CTX        = 4096
+
+        // 512 tokens ≈ 2–3 paragraphs. Model stops naturally via EOS if shorter.
+        private const val MAX_TOKENS   = 512
+
+        // MiniCPM-V 2.6 native resolution. Do not reduce — loses detail.
         private const val MAX_IMAGE_DIM = 448
     }
 
@@ -961,46 +1054,66 @@ class MiniCPMVLM(private val context: Context) : VLMInterface {
         withContext(Dispatchers.IO) {
             Log.d(TAG, "=== INITIALIZE START ===")
 
-            // 2. RUN THE DOWNLOADER FIRST
             if (!downloader.downloadIfNeeded { msg, prog -> onProgress(msg, prog) }) {
-                Log.e(TAG, "❌ Download failed or was interrupted.")
+                Log.e(TAG, "❌ Download failed.")
                 return@withContext false
             }
 
-            // 3. PROCEED WITH LOADING (Files are guaranteed to exist now)
-            val modelDir = File(context.getExternalFilesDir(null), MODEL_SUBDIR)
+            val modelDir   = File(context.getExternalFilesDir(null), MODEL_SUBDIR)
             val modelPath  = File(modelDir, MODEL_FILE).absolutePath
             val mmprojPath = File(modelDir, MMPROJ_FILE).absolutePath
 
-            Log.d(TAG, "Model dir: ${modelDir.absolutePath}")
-            Log.d(TAG, "Free RAM: ${Runtime.getRuntime().freeMemory() / 1_000_000}MB")
+            Log.d(TAG, "Model:  $modelPath (${File(modelPath).length() / 1_000_000}MB)")
+            Log.d(TAG, "MMProj: $mmprojPath (${File(mmprojPath).length() / 1_000_000}MB)")
+
+            val actManager = context.getSystemService(Context.ACTIVITY_SERVICE)
+                    as android.app.ActivityManager
+            val memInfo = android.app.ActivityManager.MemoryInfo()
+            actManager.getMemoryInfo(memInfo)
+            val availMB = memInfo.availMem / 1_000_000
+            Log.d(TAG, "Available system RAM: ${availMB}MB")
+
+            if (availMB < 2000) {
+                onProgress("❌ Not enough free RAM (${availMB}MB). Close other apps and retry.", 0)
+                return@withContext false
+            }
 
             onProgress("Loading model into RAM...", 95)
-            Log.d(TAG, "Calling LlamaJNI.loadModel...")
 
             val loadStart = System.currentTimeMillis()
             val ok = try {
                 LlamaJNI.loadModel(modelPath, mmprojPath, N_THREADS, N_CTX)
             } catch (e: Exception) {
-                Log.e(TAG, "❌ LlamaJNI.loadModel threw exception: ${e.message}", e)
+                Log.e(TAG, "❌ LlamaJNI.loadModel threw: ${e.message}", e)
                 false
             }
 
-            val loadMs = System.currentTimeMillis() - loadStart
-            Log.d(TAG, "loadModel returned: $ok in ${loadMs}ms")
+            val elapsed = System.currentTimeMillis() - loadStart
             ready = ok
 
             if (ok) {
-                Log.d(TAG, "✅ MiniCPM-V ready")
+                Log.d(TAG, "✅ MiniCPM-V 2.6 ready in ${elapsed}ms")
                 onProgress("✅ Ready!", 100)
             } else {
-                Log.e(TAG, "❌ loadModel() returned false — check C++ Logcat for details")
-                onProgress("❌ Model load failed.", 0)
+                Log.e(TAG, "❌ loadModel() returned false")
+                onProgress("❌ Model load failed. Try restarting the app.", 0)
             }
             ok
         }
 
     override fun isReady() = ready
+
+    /**
+     * Call this whenever the user picks a NEW image.
+     * Clears the C++ KV cache and resets conversation history so the next
+     * generate() call re-encodes the new image from scratch.
+     */
+    fun resetForNewImage() {
+        conversationHistory.clear()
+        lastAnswer = ""
+        LlamaJNI.resetCache()
+        Log.d(TAG, "Conversation and KV cache reset for new image.")
+    }
 
     override suspend fun chat(
         image: Bitmap,
@@ -1009,27 +1122,33 @@ class MiniCPMVLM(private val context: Context) : VLMInterface {
         conversationHistory: List<Pair<String, String>>,
         onTokenGenerated: ((String) -> Unit)?
     ): String = withContext(Dispatchers.IO) {
-        if (!ready) return@withContext "Model not loaded."
+        if (!ready) return@withContext "❌ Model not loaded. Restart the app."
+        if (question.isBlank()) return@withContext "❌ Please type a question."
+        if (image.width == 0 || image.height == 0) return@withContext "❌ Invalid image."
 
-        // 1. Scale the image to a safe size
         val safeImage = capImageSize(image, MAX_IMAGE_DIM)
+        val width     = safeImage.width
+        val height    = safeImage.height
 
-        // 2. Capture dimensions IMMEDIATELY while the bitmap is alive
-        val width  = safeImage.width
-        val height = safeImage.height
-
-        // 3. Extract pixels into a standard IntArray
         val pixels = IntArray(width * height)
         safeImage.getPixels(pixels, 0, width, 0, 0, width, height)
 
-        // 4. Run the AI generation
-        // Note: We pass the RAW 'width' and 'height' variables, NOT 'safeImage.width'
+        // Build the history string from all prior exchanges.
+        // On the first call this is empty — the C++ side encodes the image.
+        // On follow-ups this contains all prior assistant+user turns so the
+        // model has full context, but image re-encoding is skipped (fast path).
+        val historyStr = this@MiniCPMVLM.conversationHistory.joinToString("")
+
+        Log.d(TAG, "chat() | turn=${this@MiniCPMVLM.conversationHistory.size + 1} " +
+                "history_len=${historyStr.length} question=$question")
+
         val result = try {
             LlamaJNI.generate(
                 pixelData     = pixels,
                 imageWidth    = width,
                 imageHeight   = height,
                 prompt        = question,
+                history       = historyStr,
                 maxTokens     = MAX_TOKENS,
                 tokenCallback = { tokenBytes ->
                     val tokenStr = String(tokenBytes, Charsets.UTF_8)
@@ -1037,21 +1156,28 @@ class MiniCPMVLM(private val context: Context) : VLMInterface {
                 }
             )
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Generation error: ${e.message}")
-            "Error during generation."
+            Log.e(TAG, "❌ Generation error: ${e.message}", e)
+            "❌ Generation error: ${e.message}"
         }
 
-        // 5. FINALLY recycle the safeImage copy now that the AI is finished with it
-        if (safeImage !== image) {
-            safeImage.recycle()
+        if (safeImage !== image) safeImage.recycle()
+
+        val trimmed = result.trim()
+
+        // Record this exchange in history so the next turn has full context.
+        // Format: assistant reply + next user turn opener.
+        // The next question is appended by C++ based on the `prompt` param.
+        if (!trimmed.startsWith("❌")) {
+            this@MiniCPMVLM.conversationHistory.add(
+                "<|im_start|>assistant\n${trimmed}<|im_end|>\n"
+            )
+            lastAnswer = trimmed
         }
 
-        result.trim()
+        trimmed
     }
 
-    fun abort() {
-        LlamaJNI.abortGeneration()
-    }
+    fun abort() = LlamaJNI.abortGeneration()
 
     private fun capImageSize(bitmap: Bitmap, maxDim: Int): Bitmap {
         val w = bitmap.width
@@ -1062,10 +1188,10 @@ class MiniCPMVLM(private val context: Context) : VLMInterface {
     }
 
     override fun getModelInfo() = ModelInfo(
-        name    = "Qwen2-VL 2B (Redmi Test)",
-        size    = "~1.7GB",
+        name    = "MiniCPM-V 2.6",
+        size    = "~2.3GB",
         speed   = "CPU Optimized",
-        quality = "Lite Multimodal"
+        quality = "Multimodal VLM"
     )
 
     override fun cleanup() {
@@ -2955,7 +3081,7 @@ val Typography = Typography(
 
 ================================================================================
 # FILE: app\src\main\java\com\anurag\visionqa\ui\VisionQAScreen.kt
-# LINES: 471
+# LINES: 473
 ================================================================================
 
 package com.anurag.visionqa.ui
@@ -3322,6 +3448,7 @@ fun VisionQAScreen() {
                             enabled = !isInitializing,
                             onClick = {
                                 if (capturedBitmap != null) {
+                                    (vlm as? MiniCPMVLM)?.resetForNewImage()
                                     // Clear everything for the new image
                                     capturedBitmap = null
                                     cachedOcrResult = null
@@ -3334,6 +3461,7 @@ fun VisionQAScreen() {
                                             override fun onCaptureSuccess(image: ImageProxy) {
                                                 try {
                                                     val bmp = imageProxyToBitmap(image)
+                                                    (vlm as? MiniCPMVLM)?.resetForNewImage()
                                                     capturedBitmap = bmp
 
                                                     // Run OCR in background immediately after capture

@@ -13,8 +13,8 @@ class MiniCPMVLM(private val context: Context) : VLMInterface {
     private val downloader = MiniCPMDownloader(context)
 
     // Conversation history stored as formatted turn strings.
-    // Each entry is ONE complete exchange: the assistant reply to a prior question.
-    // Format per entry: "<|im_start|>assistant\nANSWER<|im_end|>\n<|im_start|>user\nNEXT_Q<|im_end|>\n"
+    // Each entry is ONE complete assistant reply.
+    // Format: "<|im_start|>assistant\nANSWER<|im_end|>\n"
     // The C++ side receives the full concatenation of all entries as `history`.
     private val conversationHistory = mutableListOf<String>()
     private var lastAnswer = ""
@@ -25,18 +25,25 @@ class MiniCPMVLM(private val context: Context) : VLMInterface {
         private const val MMPROJ_FILE  = "mmproj-model-f16.gguf"
         private const val MODEL_SUBDIR = "minicpm"
 
-        // 4 threads is the sweet spot on most Android SoCs.
-        // More threads = cache contention = slower, not faster.
-        private const val N_THREADS    = 4
+        // Snapdragon 8 Gen 2 (iQOO Neo 9 Pro) core layout:
+        //   1x Cortex-X3  prime  @ 3.2 GHz
+        //   4x Cortex-A715 perf  @ 2.8 GHz
+        //   3x Cortex-A510 eff   @ 2.0 GHz
+        //
+        // Use prime + perf cores only (5 total).
+        // Efficiency cores hurt inference speed due to cache thrashing.
+        private const val N_THREADS       = 5
+        private const val N_THREADS_BATCH = 5  // all big cores for prefill/image encoding
 
-        // 4096 gives: ~1024 image tokens + ~50 system/prompt + ~512 answer headroom
-        // per turn, with room for several follow-ups before context fills.
-        private const val N_CTX        = 4096
+        // 8192 tokens: ~1024 image tokens + system prompt + plenty of
+        // multi-turn headroom. Safe on Neo 9 Pro (12–16 GB RAM).
+        private const val N_CTX        = 8192
 
-        // 512 tokens ≈ 2–3 paragraphs. Model stops naturally via EOS if shorter.
-        private const val MAX_TOKENS   = 512
+        // 768 tokens ≈ 3–5 paragraphs. Model stops naturally via EOS if shorter.
+        // Raised from 512 to allow fuller, untruncated answers.
+        private const val MAX_TOKENS   = 768
 
-        // MiniCPM-V 2.6 native resolution. Do not reduce — loses detail.
+        // MiniCPM-V 2.6 native resolution. Do not reduce — loses visual detail.
         private const val MAX_IMAGE_DIM = 448
     }
 
@@ -74,7 +81,13 @@ class MiniCPMVLM(private val context: Context) : VLMInterface {
 
             val loadStart = System.currentTimeMillis()
             val ok = try {
-                LlamaJNI.loadModel(modelPath, mmprojPath, N_THREADS, N_CTX)
+                LlamaJNI.loadModel(
+                    modelPath    = modelPath,
+                    mmprojPath   = mmprojPath,
+                    threads      = N_THREADS,
+                    threadsBatch = N_THREADS_BATCH,
+                    ctx          = N_CTX
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "❌ LlamaJNI.loadModel threw: ${e.message}", e)
                 false
@@ -84,7 +97,8 @@ class MiniCPMVLM(private val context: Context) : VLMInterface {
             ready = ok
 
             if (ok) {
-                Log.d(TAG, "✅ MiniCPM-V 2.6 ready in ${elapsed}ms")
+                Log.d(TAG, "✅ MiniCPM-V 2.6 ready in ${elapsed}ms " +
+                        "(threads=$N_THREADS batch=$N_THREADS_BATCH ctx=$N_CTX)")
                 onProgress("✅ Ready!", 100)
             } else {
                 Log.e(TAG, "❌ loadModel() returned false")
@@ -127,8 +141,8 @@ class MiniCPMVLM(private val context: Context) : VLMInterface {
 
         // Build the history string from all prior exchanges.
         // On the first call this is empty — the C++ side encodes the image.
-        // On follow-ups this contains all prior assistant+user turns so the
-        // model has full context, but image re-encoding is skipped (fast path).
+        // On follow-ups this contains all prior assistant turns so the model
+        // has full context, while image re-encoding is skipped (fast path).
         val historyStr = this@MiniCPMVLM.conversationHistory.joinToString("")
 
         Log.d(TAG, "chat() | turn=${this@MiniCPMVLM.conversationHistory.size + 1} " +
@@ -156,9 +170,7 @@ class MiniCPMVLM(private val context: Context) : VLMInterface {
 
         val trimmed = result.trim()
 
-        // Record this exchange in history so the next turn has full context.
-        // Format: assistant reply + next user turn opener.
-        // The next question is appended by C++ based on the `prompt` param.
+        // Record this exchange so the next turn has full context.
         if (!trimmed.startsWith("❌")) {
             this@MiniCPMVLM.conversationHistory.add(
                 "<|im_start|>assistant\n${trimmed}<|im_end|>\n"

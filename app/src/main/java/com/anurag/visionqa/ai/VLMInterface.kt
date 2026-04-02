@@ -16,6 +16,7 @@ interface VLMInterface {
         onTokenGenerated: ((String) -> Unit)? = null
     ): String
 
+    fun abort()
     fun getModelInfo(): ModelInfo
     fun cleanup()
 }

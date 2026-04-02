@@ -5,8 +5,10 @@ import android.util.Log
 object LlamaJNI {
     init {
         try {
+            System.loadLibrary("omp")
             System.loadLibrary("ggml-base")
             System.loadLibrary("ggml-cpu")
+//            System.loadLibrary("ggml-vulkan")
             System.loadLibrary("ggml")
             System.loadLibrary("llama")
             System.loadLibrary("mtmd")
@@ -19,12 +21,24 @@ object LlamaJNI {
         }
     }
 
-    /** Loads the language model and multimodal projector. */
+    /**
+     * Loads the language model and multimodal projector.
+     *
+     * @param modelPath    Absolute path to the GGUF language model file.
+     * @param mmprojPath   Absolute path to the GGUF multimodal projector file.
+     * @param threads      Threads for token generation. On Snapdragon 8 Gen 2
+     *                     use 5 (1 X3 prime + 4 A715 perf cores).
+     * @param threadsBatch Threads for prefill / image encoding. Same as [threads]
+     *                     on Snapdragon 8 Gen 2 — all big cores are useful here.
+     * @param ctx          KV cache context size in tokens (8192 recommended for
+     *                     Neo 9 Pro which has 12–16 GB RAM).
+     */
     external fun loadModel(
-        modelPath:  String,
-        mmprojPath: String,
-        threads:    Int,
-        ctx:        Int
+        modelPath:    String,
+        mmprojPath:   String,
+        threads:      Int,
+        threadsBatch: Int,
+        ctx:          Int
     ): Boolean
 
     /**

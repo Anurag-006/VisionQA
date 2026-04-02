@@ -25,15 +25,15 @@ class MiniCPMDownloader(private val context: Context) {
 
         // MiniCPM-V 2.0 Q4_K_M — ~1.9GB model, ~400MB mmproj
         // Works on Redmi 13 5G (8GB) AND iQOO Neo 10 (16GB)
-        private const val BRAIN_URL = "https://huggingface.co/openbmb/MiniCPM-V-2_6-gguf/resolve/main/ggml-model-Q4_K_M.gguf"
+        private const val BRAIN_URL   = "https://huggingface.co/openbmb/MiniCPM-V-2_6-gguf/resolve/main/ggml-model-Q2_K.gguf"
         private const val EYES_URL  = "https://huggingface.co/openbmb/MiniCPM-V-2_6-gguf/resolve/main/mmproj-model-f16.gguf"        // Exact filenames the loader expects — do not change these
-        private const val LOCAL_BRAIN = "ggml-model-Q4_K_M.gguf"
+        private const val LOCAL_BRAIN = "ggml-model-Q2_K.gguf"
         private const val LOCAL_EYES  = "mmproj-model-f16.gguf"
 
         // MiniCPM-V 2.0 Q4_K_M sizes:
         // Brain: ~1.85GB  →  min check: 1.8GB
         // Eyes:  ~390MB   →  min check: 350MB
-        private const val MIN_BRAIN_BYTES = 4_000_000_000L
+        private const val MIN_BRAIN_BYTES = 2_200_000_000L  // ~2.4GB
         private const val MIN_EYES_BYTES  =   800_000_000L    }
 
     init {

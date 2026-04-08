@@ -7,6 +7,7 @@
 #include <ctime>
 #include <algorithm>
 #include <android/log.h>
+#include <stdlib.h>
 
 #include "llama.h"
 #include "mtmd.h"
@@ -14,6 +15,14 @@
 #define TAG "LlamaJNI"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+
+static void llama_log_callback(ggml_log_level level, const char* text, void* user_data) {
+    if (level == GGML_LOG_LEVEL_ERROR) {
+        LOGE("[llama] %s", text);
+    } else {
+        LOGI("[llama] %s", text);
+    }
+}
 
 static struct llama_model*   g_model = nullptr;
 static struct llama_context* g_ctx   = nullptr;
@@ -59,6 +68,7 @@ static jstring get_safe_utf8_string(JNIEnv* env, const char* data, size_t length
 
 extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM*, void*) {
     llama_backend_init();
+//    llama_log_set(llama_log_callback, nullptr);
     return JNI_VERSION_1_6;
 }
 
@@ -84,15 +94,23 @@ Java_com_anurag_visionqa_ai_LlamaJNI_loadModel(
 
     try {
         llama_model_params mp = llama_model_default_params();
-        mp.n_gpu_layers = 0;
+        mp.n_gpu_layers = 18;
         mp.use_mmap     = true;
         mp.use_mlock    = false;
 
+        LOGI("Attempting model load: gpu_layers=%d mmap=%d path=%s",
+             (int)mp.n_gpu_layers, (int)mp.use_mmap, m_path);
+
         g_model = llama_model_load_from_file(m_path, mp);
-        if (!g_model) { LOGE("Model load returned nullptr"); goto fail; }
+        if (!g_model) {
+            LOGE("Model load returned nullptr — check path exists and RAM is sufficient");
+            LOGE("Available path: %s", m_path);
+            goto fail;
+        }
 
         {
             llama_context_params cp = llama_context_default_params();
+
             cp.n_ctx           = (uint32_t)nCtx;
             cp.n_batch         = 4096;
             cp.n_ubatch        = 512;
@@ -100,12 +118,13 @@ Java_com_anurag_visionqa_ai_LlamaJNI_loadModel(
             cp.n_threads_batch = (uint32_t)nThreadsBatch;
             g_ctx = llama_init_from_model(g_model, cp);
         }
+
         if (!g_ctx) { LOGE("Context init returned nullptr"); goto fail; }
 
         {
             mtmd_context_params mparams = mtmd_context_params_default();
             mparams.n_threads = (int32_t)nThreadsBatch;
-            mparams.use_gpu   = false;
+            mparams.use_gpu   = true;
             g_mtmd = mtmd_init_from_file(v_path, g_model, mparams);
         }
         if (!g_mtmd) { LOGE("MTMD init returned nullptr"); goto fail; }

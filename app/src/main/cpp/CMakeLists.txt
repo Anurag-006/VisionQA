@@ -21,6 +21,7 @@ find_library(log-lib log)
 target_link_libraries(visionqa_jni
         ${CMAKE_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libggml-base.so
         ${CMAKE_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libggml-cpu.so
+        ${CMAKE_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libggml-vulkan.so
         ${CMAKE_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libggml.so
         ${CMAKE_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libllama.so
         ${CMAKE_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libmtmd.so

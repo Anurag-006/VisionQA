@@ -1,0 +1,1307 @@
+--------- beginning of main
+04-09 00:33:50.898 24922 24987 D MiniCPMVLM: === INITIALIZE START ===
+04-09 00:33:50.899 24922 24987 D MiniCPMVLM: Model:  /storage/emulated/0/Android/data/com.anurag.visionqa/files/minicpm/ggml-model-Q4_K_M.gguf (4681MB)
+04-09 00:33:50.899 24922 24987 D MiniCPMVLM: MMProj: /storage/emulated/0/Android/data/com.anurag.visionqa/files/minicpm/mmproj-model-f16.gguf (1044MB)
+04-09 00:33:50.899 24922 24987 D MiniCPMVLM: Available system RAM: 2253MB
+04-09 00:33:50.920 24922 24987 D LlamaJNI: ✅ Vulkan enabled for kalama
+04-09 00:33:50.927 24922 24987 D LlamaJNI: ✅ All native libraries loaded.
+04-09 00:33:50.927 24922 24987 I LlamaJNI: All resources freed.
+04-09 00:33:50.927 24922 24987 I LlamaJNI: Loading Brain from: /storage/emulated/0/Android/data/com.anurag.visionqa/files/minicpm/ggml-model-Q4_K_M.gguf
+04-09 00:33:50.927 24922 24987 I LlamaJNI: Loading Eyes from:  /storage/emulated/0/Android/data/com.anurag.visionqa/files/minicpm/mmproj-model-f16.gguf
+04-09 00:33:50.927 24922 24987 I LlamaJNI: Attempting model load: gpu_layers=18 mmap=1 path=/storage/emulated/0/Android/data/com.anurag.visionqa/files/minicpm/ggml-model-Q4_K_M.gguf
+04-09 00:33:50.946 24922 24987 I LlamaJNI: [llama] ggml_vulkan: Found 1 Vulkan devices:
+04-09 00:33:50.955 24922 24987 I LlamaJNI: [llama] ggml_vulkan: 0 = Adreno (TM) 740 (Qualcomm Technologies Inc. Adreno Vulkan Driver) | uma: 1 | fp16: 1 | bf16: 0 | warp size: 64 | shared memory: 32768 | int dot: 1 | matrix cores: none
+04-09 00:33:50.958 24922 24987 I LlamaJNI: [llama] llama_model_load_from_file_impl: using device Vulkan0 (Adreno (TM) 740) (unknown id) - 7526 MiB free
+04-09 00:33:51.004 24922 24987 I LlamaJNI: [llama] llama_model_loader: loaded meta data with 22 key-value pairs and 339 tensors from /storage/emulated/0/Android/data/com.anurag.visionqa/files/minicpm/ggml-model-Q4_K_M.gguf (version GGUF V3 (latest))
+04-09 00:33:51.004 24922 24987 I LlamaJNI: [llama] llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
+04-09 00:33:51.004 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv   0:                       general.architecture str              = qwen2
+04-09 00:33:51.004 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv   1:                               general.name str              = model
+04-09 00:33:51.004 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv   2:                          qwen2.block_count u32              = 28
+04-09 00:33:51.004 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv   3:                       qwen2.context_length u32              = 32768
+04-09 00:33:51.004 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv   4:                     qwen2.embedding_length u32              = 3584
+04-09 00:33:51.004 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv   5:                  qwen2.feed_forward_length u32              = 18944
+04-09 00:33:51.004 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv   6:                 qwen2.attention.head_count u32              = 28
+04-09 00:33:51.004 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv   7:              qwen2.attention.head_count_kv u32              = 4
+04-09 00:33:51.004 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv   8:                       qwen2.rope.freq_base f32              = 1000000.000000
+04-09 00:33:51.004 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv   9:     qwen2.attention.layer_norm_rms_epsilon f32              = 0.000001
+04-09 00:33:51.004 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv  10:                          general.file_type u32              = 15
+04-09 00:33:51.004 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv  11:                       tokenizer.ggml.model str              = gpt2
+04-09 00:33:51.004 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv  12:                         tokenizer.ggml.pre str              = qwen2
+04-09 00:33:51.050 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv  13:                      tokenizer.ggml.tokens arr[str,151666]  = ["!", "\"", "#", "$", "%", "&", "'", ...
+04-09 00:33:51.058 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv  14:                  tokenizer.ggml.token_type arr[i32,151666]  = [3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...
+04-09 00:33:51.090 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv  15:                      tokenizer.ggml.merges arr[str,151387]  = ["Ġ Ġ", "ĠĠ ĠĠ", "i n", "Ġ t",...
+04-09 00:33:51.090 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv  16:                tokenizer.ggml.bos_token_id u32              = 151644
+04-09 00:33:51.090 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv  17:                tokenizer.ggml.eos_token_id u32              = 151645
+04-09 00:33:51.090 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv  18:            tokenizer.ggml.unknown_token_id u32              = 128244
+04-09 00:33:51.090 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv  19:            tokenizer.ggml.padding_token_id u32              = 0
+04-09 00:33:51.090 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv  20:                    tokenizer.chat_template str              = {% for message in messages %}{% if lo...
+04-09 00:33:51.090 24922 24987 I LlamaJNI: [llama] llama_model_loader: - kv  21:               general.quantization_version u32              = 2
+04-09 00:33:51.090 24922 24987 I LlamaJNI: [llama] llama_model_loader: - type  f32:  141 tensors
+04-09 00:33:51.090 24922 24987 I LlamaJNI: [llama] llama_model_loader: - type q4_K:  169 tensors
+04-09 00:33:51.090 24922 24987 I LlamaJNI: [llama] llama_model_loader: - type q6_K:   29 tensors
+04-09 00:33:51.090 24922 24987 I LlamaJNI: [llama] print_info: file format = GGUF V3 (latest)
+04-09 00:33:51.090 24922 24987 I LlamaJNI: [llama] print_info: file type   = Q4_K - Medium
+04-09 00:33:51.090 24922 24987 I LlamaJNI: [llama] print_info: file size   = 4.35 GiB (4.91 BPW)
+04-09 00:33:51.253 24922 24987 I LlamaJNI: [llama] init_tokenizer: initializing tokenizer for type 2
+04-09 00:33:51.288 24922 24987 I LlamaJNI: [llama] load: 0 unused tokens
+04-09 00:33:51.288 24922 24987 I LlamaJNI: [llama] load: control token: 151665 '</video_cap>' is not marked as EOG
+04-09 00:33:51.288 24922 24987 I LlamaJNI: [llama] load: control token: 151664 '<video_cap>' is not marked as EOG
+04-09 00:33:51.288 24922 24987 I LlamaJNI: [llama] load: control token: 151663 '</low_res>' is not marked as EOG
+04-09 00:33:51.288 24922 24987 I LlamaJNI: [llama] load: control token: 151662 '<low_res>' is not marked as EOG
+04-09 00:33:51.288 24922 24987 I LlamaJNI: [llama] load: control token: 151661 '/<audio>' is not marked as EOG
+04-09 00:33:51.288 24922 24987 I LlamaJNI: [llama] load: control token: 151660 '<audio>' is not marked as EOG
+04-09 00:33:51.288 24922 24987 I LlamaJNI: [llama] load: control token: 151659 '</image_id>' is not marked as EOG
+04-09 00:33:51.288 24922 24987 I LlamaJNI: [llama] load: control token: 151654 '<point>' is not marked as EOG
+04-09 00:33:51.288 24922 24987 I LlamaJNI: [llama] load: control token: 151652 '<quad>' is not marked as EOG
+04-09 00:33:51.288 24922 24987 I LlamaJNI: [llama] load: control token: 151651 '</box>' is not marked as EOG
+04-09 00:33:51.288 24922 24987 I LlamaJNI: [llama] load: control token: 151648 '<ref>' is not marked as EOG
+04-09 00:33:51.288 24922 24987 I LlamaJNI: [llama] load: control token: 151644 '<|im_start|>' is not marked as EOG
+04-09 00:33:51.288 24922 24987 I LlamaJNI: [llama] load: control token: 151650 '<box>' is not marked as EOG
+04-09 00:33:51.288 24922 24987 I LlamaJNI: [llama] load: control token: 151653 '</quad>' is not marked as EOG
+04-09 00:33:51.289 24922 24987 I LlamaJNI: [llama] load: control token: 151658 '<image_id>' is not marked as EOG
+04-09 00:33:51.289 24922 24987 I LlamaJNI: [llama] load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+04-09 00:33:51.289 24922 24987 I LlamaJNI: [llama] load: control token: 128244 '<unk>' is not marked as EOG
+04-09 00:33:51.289 24922 24987 I LlamaJNI: [llama] load: control token: 151647 '</image>' is not marked as EOG
+04-09 00:33:51.291 24922 24987 I LlamaJNI: [llama] load: control token: 151646 '<image>' is not marked as EOG
+04-09 00:33:51.293 24922 24987 I LlamaJNI: [llama] load: control token: 151649 '</ref>' is not marked as EOG
+04-09 00:33:51.295 24922 24987 I LlamaJNI: [llama] load: control token:      0 '!' is not marked as EOG
+04-09 00:33:51.296 24922 24987 I LlamaJNI: [llama] load: control token: 151657 '</slice>' is not marked as EOG
+04-09 00:33:51.304 24922 24987 I LlamaJNI: [llama] load: control token: 151656 '<slice>' is not marked as EOG
+04-09 00:33:51.310 24922 24987 I LlamaJNI: [llama] load: control token: 151655 '</point>' is not marked as EOG
+04-09 00:33:51.328 24922 24987 I LlamaJNI: [llama] load: printing all EOG tokens:
+04-09 00:33:51.328 24922 24987 I LlamaJNI: [llama] load:   - 128247 ('</s>')
+04-09 00:33:51.328 24922 24987 I LlamaJNI: [llama] load:   - 151643 ('<|endoftext|>')
+04-09 00:33:51.328 24922 24987 I LlamaJNI: [llama] load:   - 151645 ('<|im_end|>')
+04-09 00:33:51.329 24922 24987 I LlamaJNI: [llama] load: special tokens cache size = 26
+04-09 00:33:51.393 24922 24987 I LlamaJNI: [llama] load: token to piece cache size = 0.9309 MB
+04-09 00:33:51.396 24922 24987 I LlamaJNI: [llama] print_info: arch                  = qwen2
+04-09 00:33:51.396 24922 24987 I LlamaJNI: [llama] print_info: vocab_only            = 0
+04-09 00:33:51.396 24922 24987 I LlamaJNI: [llama] print_info: no_alloc              = 0
+04-09 00:33:51.396 24922 24987 I LlamaJNI: [llama] print_info: n_ctx_train           = 32768
+04-09 00:33:51.396 24922 24987 I LlamaJNI: [llama] print_info: n_embd                = 3584
+04-09 00:33:51.396 24922 24987 I LlamaJNI: [llama] print_info: n_embd_inp            = 3584
+04-09 00:33:51.396 24922 24987 I LlamaJNI: [llama] print_info: n_layer               = 28
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_head                = 28
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_head_kv             = 4
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_rot                 = 128
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_swa                 = 0
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: is_swa_any            = 0
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_embd_head_k         = 128
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_embd_head_v         = 128
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_gqa                 = 7
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_embd_k_gqa          = 512
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_embd_v_gqa          = 512
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: f_norm_eps            = 0.0e+00
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: f_norm_rms_eps        = 1.0e-06
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: f_clamp_kqv           = 0.0e+00
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: f_max_alibi_bias      = 0.0e+00
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: f_logit_scale         = 0.0e+00
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: f_attn_scale          = 0.0e+00
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_ff                  = 18944
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_expert              = 0
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_expert_used         = 0
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_expert_groups       = 0
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_group_used          = 0
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: causal attn           = 1
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: pooling type          = -1
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: rope type             = 2
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: rope scaling          = linear
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: freq_base_train       = 1000000.0
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: freq_scale_train      = 1
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_ctx_orig_yarn       = 32768
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: rope_yarn_log_mul     = 0.0000
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: rope_finetuned        = unknown
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: model type            = 7B
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: model params          = 7.61 B
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: general.name          = model
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: vocab type            = BPE
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_vocab               = 151666
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: n_merges              = 151387
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: BOS token             = 151644 '<|im_start|>'
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: EOS token             = 151645 '<|im_end|>'
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: EOT token             = 151645 '<|im_end|>'
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: UNK token             = 128244 '<unk>'
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: PAD token             = 0 '!'
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: LF token              = 198 'Ċ'
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: EOG token             = 128247 '</s>'
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: EOG token             = 151643 '<|endoftext|>'
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: EOG token             = 151645 '<|im_end|>'
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] print_info: max token length      = 256
+04-09 00:33:51.397 24922 24987 I LlamaJNI: [llama] load_tensors: loading model tensors, this can take a while... (mmap = true, direct_io = false)
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer   0 assigned to device CPU, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer   1 assigned to device CPU, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer   2 assigned to device CPU, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer   3 assigned to device CPU, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer   4 assigned to device CPU, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer   5 assigned to device CPU, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer   6 assigned to device CPU, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer   7 assigned to device CPU, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer   8 assigned to device CPU, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer   9 assigned to device CPU, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  10 assigned to device CPU, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  11 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  12 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  13 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  14 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  15 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  16 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  17 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  18 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  19 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  20 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  21 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  22 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  23 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  24 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  25 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  26 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  27 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] load_tensors: layer  28 assigned to device Vulkan0, is_swa = 0
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor token_embd.weight
+04-09 00:33:51.414 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor output_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor output.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_q.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_k.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_v.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_output.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_q.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_k.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_v.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.ffn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.ffn_gate.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.ffn_down.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.ffn_up.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_q.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_k.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_v.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_output.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_q.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_k.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_v.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.ffn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.ffn_gate.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.ffn_down.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.ffn_up.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_q.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_k.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_v.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_output.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_q.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_k.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_v.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.ffn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.ffn_gate.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.ffn_down.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.ffn_up.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_q.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_k.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_v.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_output.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_q.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_k.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_v.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.ffn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.ffn_gate.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.ffn_down.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.ffn_up.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_q.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_k.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_v.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_output.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_q.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_k.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_v.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.ffn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.ffn_gate.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.ffn_down.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.ffn_up.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_q.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_k.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_v.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_output.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_q.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_k.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_v.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.ffn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.ffn_gate.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.ffn_down.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.ffn_up.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_q.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_k.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_v.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_output.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_q.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_k.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_v.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.ffn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.ffn_gate.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.ffn_down.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.ffn_up.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_q.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_k.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_v.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_output.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_q.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_k.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_v.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.ffn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.ffn_gate.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.ffn_down.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.ffn_up.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_q.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_k.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_v.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_output.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_q.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_k.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_v.bias
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.ffn_norm.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.ffn_gate.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.ffn_down.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.ffn_up.weight
+04-09 00:33:51.415 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_q.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_k.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_v.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_output.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_q.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_k.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_v.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.ffn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.ffn_gate.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.ffn_down.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.ffn_up.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_q.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_k.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_v.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_output.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_q.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_k.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_v.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.ffn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.ffn_gate.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.ffn_down.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.ffn_up.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_q.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_k.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_v.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_output.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_q.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_k.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_v.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.ffn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.ffn_gate.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.ffn_down.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.ffn_up.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_q.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_k.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_v.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_output.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_q.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_k.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_v.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.ffn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.ffn_gate.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.ffn_down.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.ffn_up.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_q.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_k.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_v.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_output.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_q.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_k.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_v.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.ffn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.ffn_gate.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.ffn_down.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.ffn_up.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_q.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_k.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_v.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_output.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_q.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_k.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_v.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.ffn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.ffn_gate.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.ffn_down.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.ffn_up.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_q.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_k.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_v.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_output.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_q.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_k.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_v.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.ffn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.ffn_gate.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.ffn_down.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.ffn_up.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_q.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_k.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_v.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_output.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_q.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_k.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_v.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.ffn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.ffn_gate.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.ffn_down.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.ffn_up.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_q.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_k.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_v.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_output.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_q.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_k.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_v.bias
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.ffn_norm.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.ffn_gate.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.ffn_down.weight
+04-09 00:33:51.416 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.ffn_up.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_q.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_k.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_v.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_output.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_q.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_k.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_v.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.ffn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.ffn_gate.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.ffn_down.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.ffn_up.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_q.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_k.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_v.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_output.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_q.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_k.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_v.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.ffn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.ffn_gate.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.ffn_down.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.ffn_up.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_q.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_k.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_v.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_output.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_q.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_k.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_v.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.ffn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.ffn_gate.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.ffn_down.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.ffn_up.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_q.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_k.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_v.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_output.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_q.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_k.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_v.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.ffn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.ffn_gate.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.ffn_down.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.ffn_up.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_q.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_k.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_v.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_output.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_q.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_k.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_v.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.ffn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.ffn_gate.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.ffn_down.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.ffn_up.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_q.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_k.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_v.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_output.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_q.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_k.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_v.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.ffn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.ffn_gate.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.ffn_down.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.ffn_up.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_q.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_k.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_v.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_output.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_q.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_k.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_v.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.ffn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.ffn_gate.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.ffn_down.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.ffn_up.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_q.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_k.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_v.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_output.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_q.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_k.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_v.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.ffn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.ffn_gate.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.ffn_down.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.ffn_up.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_q.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_k.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_v.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_output.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_q.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_k.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_v.bias
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.ffn_norm.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.ffn_gate.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.ffn_down.weight
+04-09 00:33:51.417 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.ffn_up.weight
+04-09 00:33:51.418 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_norm.weight
+04-09 00:33:51.418 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_q.weight
+04-09 00:33:51.418 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_k.weight
+04-09 00:33:51.418 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_v.weight
+04-09 00:33:51.418 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_output.weight
+04-09 00:33:51.418 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_q.bias
+04-09 00:33:51.418 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_k.bias
+04-09 00:33:51.418 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_v.bias
+04-09 00:33:51.418 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.ffn_norm.weight
+04-09 00:33:51.418 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.ffn_gate.weight
+04-09 00:33:51.418 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.ffn_down.weight
+04-09 00:33:51.418 24922 24987 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.ffn_up.weight
+04-09 00:33:51.419 24922 24987 I LlamaJNI: [llama] done_getting_tensors: tensor 'token_embd.weight' (q4_K) (and 133 others) cannot be used with preferred buffer type Vulkan_Host, using CPU instead
+04-09 00:34:03.604 24922 24987 I LlamaJNI: [llama] load_tensors: offloading output layer to GPU
+04-09 00:34:03.604 24922 24987 I LlamaJNI: [llama] load_tensors: offloading 17 repeating layers to GPU
+04-09 00:34:03.604 24922 24987 I LlamaJNI: [llama] load_tensors: offloaded 18/29 layers to GPU
+04-09 00:34:03.605 24922 24987 I LlamaJNI: [llama] load_tensors:   CPU_Mapped model buffer size =  4458.57 MiB
+04-09 00:34:03.605 24922 24987 I LlamaJNI: [llama] load_tensors:      Vulkan0 model buffer size =  2263.65 MiB
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.606 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.607 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.607 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.607 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.607 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.607 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.607 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.607 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.607 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.607 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.607 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.607 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.607 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.607 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.607 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:03.607 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:04.271 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:04.470 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:04.640 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:04.823 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:04.895 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:04.968 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:05.054 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:05.169 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:05.201 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:05.684 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:05.867 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:05.967 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:06.196 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:06.743 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:06.948 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:07.036 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:07.147 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:07.283 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:07.430 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:07.615 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:07.688 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:07.763 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:07.913 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:08.071 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:08.470 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:08.662 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:08.818 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:08.922 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:09.069 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:09.161 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:09.240 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:09.407 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:09.546 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:09.629 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:09.817 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:09.985 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:10.070 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:10.218 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:10.381 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:10.486 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:10.668 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:11.564 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:11.687 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:11.689 24922 24987 I LlamaJNI: [llama]
+04-09 00:34:11.723 24922 24987 I LlamaJNI: [llama] llama_context: constructing llama_context
+04-09 00:34:11.723 24922 24987 I LlamaJNI: [llama] llama_context: n_seq_max     = 1
+04-09 00:34:11.723 24922 24987 I LlamaJNI: [llama] llama_context: n_ctx         = 2048
+04-09 00:34:11.723 24922 24987 I LlamaJNI: [llama] llama_context: n_ctx_seq     = 2048
+04-09 00:34:11.723 24922 24987 I LlamaJNI: [llama] llama_context: n_batch       = 2048
+04-09 00:34:11.723 24922 24987 I LlamaJNI: [llama] llama_context: n_ubatch      = 512
+04-09 00:34:11.723 24922 24987 I LlamaJNI: [llama] llama_context: causal_attn   = 1
+04-09 00:34:11.723 24922 24987 I LlamaJNI: [llama] llama_context: flash_attn    = auto
+04-09 00:34:11.723 24922 24987 I LlamaJNI: [llama] llama_context: kv_unified    = false
+04-09 00:34:11.723 24922 24987 I LlamaJNI: [llama] llama_context: freq_base     = 1000000.0
+04-09 00:34:11.723 24922 24987 I LlamaJNI: [llama] llama_context: freq_scale    = 1
+04-09 00:34:11.723 24922 24987 I LlamaJNI: [llama] llama_context: n_ctx_seq (2048) < n_ctx_train (32768) -- the full capacity of the model will not be utilized
+04-09 00:34:11.735 24922 24987 I LlamaJNI: [llama] set_abort_callback: call
+04-09 00:34:11.740 24922 24987 I LlamaJNI: [llama] llama_context: Vulkan_Host  output buffer size =     0.58 MiB
+04-09 00:34:11.748 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer   0: dev = CPU
+04-09 00:34:11.751 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer   1: dev = CPU
+04-09 00:34:11.751 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer   2: dev = CPU
+04-09 00:34:11.751 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer   3: dev = CPU
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer   4: dev = CPU
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer   5: dev = CPU
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer   6: dev = CPU
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer   7: dev = CPU
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer   8: dev = CPU
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer   9: dev = CPU
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  10: dev = CPU
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  11: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  12: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  13: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  14: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  15: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  16: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  17: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  18: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  19: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  20: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  21: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  22: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  23: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  24: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  25: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  26: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache: layer  27: dev = Vulkan0
+04-09 00:34:11.752 24922 24987 I LlamaJNI: [llama] llama_kv_cache:        CPU KV buffer size =    44.00 MiB
+04-09 00:34:10.819 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:10.910 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:11.039 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:11.164 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:11.260 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:11.289 24922 24987 I LlamaJNI: [llama] .
+04-09 00:34:11.878 24922 24987 I LlamaJNI: [llama] llama_kv_cache:    Vulkan0 KV buffer size =    68.00 MiB
+04-09 00:34:11.896 24922 24987 I LlamaJNI: [llama] llama_kv_cache: size =  112.00 MiB (  2048 cells,  28 layers,  1/1 seqs), K (f16):   56.00 MiB, V (f16):   56.00 MiB
+04-09 00:34:11.896 24922 24987 I LlamaJNI: [llama] llama_context: enumerating backends
+04-09 00:34:11.896 24922 24987 I LlamaJNI: [llama] llama_context: backend_ptrs.size() = 2
+04-09 00:34:11.896 24922 24987 I LlamaJNI: [llama] sched_reserve: reserving ...
+04-09 00:34:11.896 24922 24987 I LlamaJNI: [llama] sched_reserve: max_nodes = 2712
+04-09 00:34:11.903 24922 24987 I LlamaJNI: [llama] sched_reserve: reserving full memory module
+04-09 00:34:11.904 24922 24987 I LlamaJNI: [llama] sched_reserve: worst-case: n_tokens = 512, n_seqs = 1, n_outputs = 1
+04-09 00:34:11.904 24922 24987 I LlamaJNI: [llama] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+04-09 00:34:11.912 24922 24987 I LlamaJNI: [llama] sched_reserve: Flash Attention was auto, set to enabled
+04-09 00:34:11.912 24922 24987 I LlamaJNI: [llama] sched_reserve: resolving fused Gated Delta Net support:
+04-09 00:34:11.912 24922 24987 I LlamaJNI: [llama] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+04-09 00:34:11.912 24922 24987 I LlamaJNI: [llama] sched_reserve: fused Gated Delta Net (autoregressive) enabled
+04-09 00:34:11.912 24922 24987 I LlamaJNI: [llama] graph_reserve: reserving a graph for ubatch with n_tokens =   16, n_seqs =  1, n_outputs =   16
+04-09 00:34:11.913 24922 24987 I LlamaJNI: [llama] sched_reserve: fused Gated Delta Net (chunked) enabled
+04-09 00:34:11.913 24922 24987 I LlamaJNI: [llama] graph_reserve: reserving a graph for ubatch with n_tokens =  512, n_seqs =  1, n_outputs =  512
+04-09 00:34:12.437 24922 24987 I LlamaJNI: [llama] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+04-09 00:34:12.438 24922 24987 I LlamaJNI: [llama] graph_reserve: reserving a graph for ubatch with n_tokens =  512, n_seqs =  1, n_outputs =  512
+04-09 00:34:12.439 24922 24987 I LlamaJNI: [llama] sched_reserve:    Vulkan0 compute buffer size =   179.44 MiB
+04-09 00:34:12.439 24922 24987 I LlamaJNI: [llama] sched_reserve: Vulkan_Host compute buffer size =   310.22 MiB
+04-09 00:34:12.439 24922 24987 I LlamaJNI: [llama] sched_reserve: graph nodes  = 959
+04-09 00:34:12.439 24922 24987 I LlamaJNI: [llama] sched_reserve: graph splits = 157 (with bs=512), 3 (with bs=1)
+04-09 00:34:12.439 24922 24987 I LlamaJNI: [llama] sched_reserve: reserve took 543.65 ms, sched copies = 1
+04-09 00:35:28.306 24922 24987 I LlamaJNI: ✅ Model ready | n_vocab=151666 ctx=2048 threads=5/5
+04-09 00:35:28.327 24922 24987 D MiniCPMVLM: ✅ MiniCPM-V 2.6 ready in 97419ms (threads=5 batch=5 ctx=2048)
+04-09 00:36:42.417 30435 30517 I LlamaJNI: All resources freed.
+04-09 00:36:42.417 30435 30517 I LlamaJNI: Loading Brain from: /storage/emulated/0/Android/data/com.anurag.visionqa/files/minicpm/ggml-model-Q4_K_M.gguf
+04-09 00:36:42.417 30435 30517 I LlamaJNI: Loading Eyes from:  /storage/emulated/0/Android/data/com.anurag.visionqa/files/minicpm/mmproj-model-f16.gguf
+04-09 00:36:42.417 30435 30517 I LlamaJNI: Attempting model load: gpu_layers=18 mmap=1 path=/storage/emulated/0/Android/data/com.anurag.visionqa/files/minicpm/ggml-model-Q4_K_M.gguf
+04-09 00:36:42.460 30435 30517 I LlamaJNI: [llama] ggml_vulkan: Found 1 Vulkan devices:
+04-09 00:36:42.460 30435 30517 I LlamaJNI: [llama] ggml_vulkan: 0 = Adreno (TM) 740 (Qualcomm Technologies Inc. Adreno Vulkan Driver) | uma: 1 | fp16: 1 | bf16: 0 | warp size: 64 | shared memory: 32768 | int dot: 1 | matrix cores: none
+04-09 00:36:42.463 30435 30517 I LlamaJNI: [llama] llama_model_load_from_file_impl: using device Vulkan0 (Adreno (TM) 740) (unknown id) - 7526 MiB free
+04-09 00:36:42.537 30435 30517 I LlamaJNI: [llama] llama_model_loader: loaded meta data with 22 key-value pairs and 339 tensors from /storage/emulated/0/Android/data/com.anurag.visionqa/files/minicpm/ggml-model-Q4_K_M.gguf (version GGUF V3 (latest))
+04-09 00:36:42.537 30435 30517 I LlamaJNI: [llama] llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
+04-09 00:36:42.537 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv   0:                       general.architecture str              = qwen2
+04-09 00:36:42.537 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv   1:                               general.name str              = model
+04-09 00:36:42.537 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv   2:                          qwen2.block_count u32              = 28
+04-09 00:36:42.538 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv   3:                       qwen2.context_length u32              = 32768
+04-09 00:36:42.538 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv   4:                     qwen2.embedding_length u32              = 3584
+04-09 00:36:42.538 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv   5:                  qwen2.feed_forward_length u32              = 18944
+04-09 00:36:42.538 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv   6:                 qwen2.attention.head_count u32              = 28
+04-09 00:36:42.538 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv   7:              qwen2.attention.head_count_kv u32              = 4
+04-09 00:36:42.538 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv   8:                       qwen2.rope.freq_base f32              = 1000000.000000
+04-09 00:36:42.538 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv   9:     qwen2.attention.layer_norm_rms_epsilon f32              = 0.000001
+04-09 00:36:42.538 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv  10:                          general.file_type u32              = 15
+04-09 00:36:42.538 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv  11:                       tokenizer.ggml.model str              = gpt2
+04-09 00:36:42.538 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv  12:                         tokenizer.ggml.pre str              = qwen2
+04-09 00:36:42.571 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv  13:                      tokenizer.ggml.tokens arr[str,151666]  = ["!", "\"", "#", "$", "%", "&", "'", ...
+04-09 00:36:42.579 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv  14:                  tokenizer.ggml.token_type arr[i32,151666]  = [3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...
+04-09 00:36:42.608 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv  15:                      tokenizer.ggml.merges arr[str,151387]  = ["Ġ Ġ", "ĠĠ ĠĠ", "i n", "Ġ t",...
+04-09 00:36:42.608 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv  16:                tokenizer.ggml.bos_token_id u32              = 151644
+04-09 00:36:42.608 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv  17:                tokenizer.ggml.eos_token_id u32              = 151645
+04-09 00:36:42.608 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv  18:            tokenizer.ggml.unknown_token_id u32              = 128244
+04-09 00:36:42.608 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv  19:            tokenizer.ggml.padding_token_id u32              = 0
+04-09 00:36:42.608 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv  20:                    tokenizer.chat_template str              = {% for message in messages %}{% if lo...
+04-09 00:36:42.608 30435 30517 I LlamaJNI: [llama] llama_model_loader: - kv  21:               general.quantization_version u32              = 2
+04-09 00:36:42.608 30435 30517 I LlamaJNI: [llama] llama_model_loader: - type  f32:  141 tensors
+04-09 00:36:42.608 30435 30517 I LlamaJNI: [llama] llama_model_loader: - type q4_K:  169 tensors
+04-09 00:36:42.608 30435 30517 I LlamaJNI: [llama] llama_model_loader: - type q6_K:   29 tensors
+04-09 00:36:42.608 30435 30517 I LlamaJNI: [llama] print_info: file format = GGUF V3 (latest)
+04-09 00:36:42.608 30435 30517 I LlamaJNI: [llama] print_info: file type   = Q4_K - Medium
+04-09 00:36:42.608 30435 30517 I LlamaJNI: [llama] print_info: file size   = 4.35 GiB (4.91 BPW)
+04-09 00:36:42.832 30435 30517 I LlamaJNI: [llama] init_tokenizer: initializing tokenizer for type 2
+04-09 00:36:42.862 30435 30517 I LlamaJNI: [llama] load: 0 unused tokens
+04-09 00:36:42.862 30435 30517 I LlamaJNI: [llama] load: control token: 151665 '</video_cap>' is not marked as EOG
+04-09 00:36:42.862 30435 30517 I LlamaJNI: [llama] load: control token: 151664 '<video_cap>' is not marked as EOG
+04-09 00:36:42.862 30435 30517 I LlamaJNI: [llama] load: control token: 151663 '</low_res>' is not marked as EOG
+04-09 00:36:42.862 30435 30517 I LlamaJNI: [llama] load: control token: 151662 '<low_res>' is not marked as EOG
+04-09 00:36:42.862 30435 30517 I LlamaJNI: [llama] load: control token: 151661 '/<audio>' is not marked as EOG
+04-09 00:36:42.862 30435 30517 I LlamaJNI: [llama] load: control token: 151660 '<audio>' is not marked as EOG
+04-09 00:36:42.862 30435 30517 I LlamaJNI: [llama] load: control token: 151659 '</image_id>' is not marked as EOG
+04-09 00:36:42.862 30435 30517 I LlamaJNI: [llama] load: control token: 151654 '<point>' is not marked as EOG
+04-09 00:36:42.862 30435 30517 I LlamaJNI: [llama] load: control token: 151652 '<quad>' is not marked as EOG
+04-09 00:36:42.862 30435 30517 I LlamaJNI: [llama] load: control token: 151651 '</box>' is not marked as EOG
+04-09 00:36:42.862 30435 30517 I LlamaJNI: [llama] load: control token: 151648 '<ref>' is not marked as EOG
+04-09 00:36:42.862 30435 30517 I LlamaJNI: [llama] load: control token: 151644 '<|im_start|>' is not marked as EOG
+04-09 00:36:42.863 30435 30517 I LlamaJNI: [llama] load: control token: 151650 '<box>' is not marked as EOG
+04-09 00:36:42.863 30435 30517 I LlamaJNI: [llama] load: control token: 151653 '</quad>' is not marked as EOG
+04-09 00:36:42.863 30435 30517 I LlamaJNI: [llama] load: control token: 151658 '<image_id>' is not marked as EOG
+04-09 00:36:42.863 30435 30517 I LlamaJNI: [llama] load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+04-09 00:36:42.863 30435 30517 I LlamaJNI: [llama] load: control token: 128244 '<unk>' is not marked as EOG
+04-09 00:36:42.863 30435 30517 I LlamaJNI: [llama] load: control token: 151647 '</image>' is not marked as EOG
+04-09 00:36:42.865 30435 30517 I LlamaJNI: [llama] load: control token: 151646 '<image>' is not marked as EOG
+04-09 00:36:42.866 30435 30517 I LlamaJNI: [llama] load: control token: 151649 '</ref>' is not marked as EOG
+04-09 00:36:42.867 30435 30517 I LlamaJNI: [llama] load: control token:      0 '!' is not marked as EOG
+04-09 00:36:42.868 30435 30517 I LlamaJNI: [llama] load: control token: 151657 '</slice>' is not marked as EOG
+04-09 00:36:42.874 30435 30517 I LlamaJNI: [llama] load: control token: 151656 '<slice>' is not marked as EOG
+04-09 00:36:42.880 30435 30517 I LlamaJNI: [llama] load: control token: 151655 '</point>' is not marked as EOG
+04-09 00:36:42.898 30435 30517 I LlamaJNI: [llama] load: printing all EOG tokens:
+04-09 00:36:42.898 30435 30517 I LlamaJNI: [llama] load:   - 128247 ('</s>')
+04-09 00:36:42.898 30435 30517 I LlamaJNI: [llama] load:   - 151643 ('<|endoftext|>')
+04-09 00:36:42.898 30435 30517 I LlamaJNI: [llama] load:   - 151645 ('<|im_end|>')
+04-09 00:36:42.898 30435 30517 I LlamaJNI: [llama] load: special tokens cache size = 26
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] load: token to piece cache size = 0.9309 MB
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: arch                  = qwen2
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: vocab_only            = 0
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: no_alloc              = 0
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_ctx_train           = 32768
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_embd                = 3584
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_embd_inp            = 3584
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_layer               = 28
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_head                = 28
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_head_kv             = 4
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_rot                 = 128
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_swa                 = 0
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: is_swa_any            = 0
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_embd_head_k         = 128
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_embd_head_v         = 128
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_gqa                 = 7
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_embd_k_gqa          = 512
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_embd_v_gqa          = 512
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: f_norm_eps            = 0.0e+00
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: f_norm_rms_eps        = 1.0e-06
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: f_clamp_kqv           = 0.0e+00
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: f_max_alibi_bias      = 0.0e+00
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: f_logit_scale         = 0.0e+00
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: f_attn_scale          = 0.0e+00
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_ff                  = 18944
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_expert              = 0
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_expert_used         = 0
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_expert_groups       = 0
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_group_used          = 0
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: causal attn           = 1
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: pooling type          = -1
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: rope type             = 2
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: rope scaling          = linear
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: freq_base_train       = 1000000.0
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: freq_scale_train      = 1
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_ctx_orig_yarn       = 32768
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: rope_yarn_log_mul     = 0.0000
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: rope_finetuned        = unknown
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: model type            = 7B
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: model params          = 7.61 B
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: general.name          = model
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: vocab type            = BPE
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_vocab               = 151666
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: n_merges              = 151387
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: BOS token             = 151644 '<|im_start|>'
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: EOS token             = 151645 '<|im_end|>'
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: EOT token             = 151645 '<|im_end|>'
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: UNK token             = 128244 '<unk>'
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: PAD token             = 0 '!'
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: LF token              = 198 'Ċ'
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: EOG token             = 128247 '</s>'
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: EOG token             = 151643 '<|endoftext|>'
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: EOG token             = 151645 '<|im_end|>'
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] print_info: max token length      = 256
+04-09 00:36:42.960 30435 30517 I LlamaJNI: [llama] load_tensors: loading model tensors, this can take a while... (mmap = true, direct_io = false)
+04-09 00:36:43.111 30435 30517 I LlamaJNI: [llama] load_tensors: layer   0 assigned to device CPU, is_swa = 0
+04-09 00:36:43.111 30435 30517 I LlamaJNI: [llama] load_tensors: layer   1 assigned to device CPU, is_swa = 0
+04-09 00:36:43.111 30435 30517 I LlamaJNI: [llama] load_tensors: layer   2 assigned to device CPU, is_swa = 0
+04-09 00:36:43.111 30435 30517 I LlamaJNI: [llama] load_tensors: layer   3 assigned to device CPU, is_swa = 0
+04-09 00:36:43.111 30435 30517 I LlamaJNI: [llama] load_tensors: layer   4 assigned to device CPU, is_swa = 0
+04-09 00:36:43.111 30435 30517 I LlamaJNI: [llama] load_tensors: layer   5 assigned to device CPU, is_swa = 0
+04-09 00:36:43.111 30435 30517 I LlamaJNI: [llama] load_tensors: layer   6 assigned to device CPU, is_swa = 0
+04-09 00:36:43.111 30435 30517 I LlamaJNI: [llama] load_tensors: layer   7 assigned to device CPU, is_swa = 0
+04-09 00:36:43.111 30435 30517 I LlamaJNI: [llama] load_tensors: layer   8 assigned to device CPU, is_swa = 0
+04-09 00:36:43.111 30435 30517 I LlamaJNI: [llama] load_tensors: layer   9 assigned to device CPU, is_swa = 0
+04-09 00:36:43.111 30435 30517 I LlamaJNI: [llama] load_tensors: layer  10 assigned to device CPU, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  11 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  12 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  13 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  14 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  15 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  16 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  17 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  18 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  19 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  20 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  21 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  22 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  23 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  24 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  25 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  26 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  27 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.112 30435 30517 I LlamaJNI: [llama] load_tensors: layer  28 assigned to device Vulkan0, is_swa = 0
+04-09 00:36:43.118 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor token_embd.weight
+04-09 00:36:43.118 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor output_norm.weight
+04-09 00:36:43.118 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor output.weight
+04-09 00:36:43.118 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_norm.weight
+04-09 00:36:43.118 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_q.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_k.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_v.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_output.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_q.bias
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_k.bias
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.attn_v.bias
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.ffn_norm.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.ffn_gate.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.ffn_down.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.0.ffn_up.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_norm.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_q.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_k.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_v.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_output.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_q.bias
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_k.bias
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.attn_v.bias
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.ffn_norm.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.ffn_gate.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.ffn_down.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.1.ffn_up.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_norm.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_q.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_k.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_v.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_output.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_q.bias
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_k.bias
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.attn_v.bias
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.ffn_norm.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.ffn_gate.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.ffn_down.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.2.ffn_up.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_norm.weight
+04-09 00:36:43.119 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_q.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_k.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_v.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_output.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_q.bias
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_k.bias
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.attn_v.bias
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.ffn_norm.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.ffn_gate.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.ffn_down.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.3.ffn_up.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_norm.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_q.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_k.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_v.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_output.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_q.bias
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_k.bias
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.attn_v.bias
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.ffn_norm.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.ffn_gate.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.ffn_down.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.4.ffn_up.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_norm.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_q.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_k.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_v.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_output.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_q.bias
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_k.bias
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.attn_v.bias
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.ffn_norm.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.ffn_gate.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.ffn_down.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.5.ffn_up.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_norm.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_q.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_k.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_v.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_output.weight
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_q.bias
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_k.bias
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.attn_v.bias
+04-09 00:36:43.122 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.ffn_norm.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.ffn_gate.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.ffn_down.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.6.ffn_up.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_norm.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_q.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_k.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_v.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_output.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_q.bias
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_k.bias
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.attn_v.bias
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.ffn_norm.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.ffn_gate.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.ffn_down.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.7.ffn_up.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_norm.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_q.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_k.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_v.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_output.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_q.bias
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_k.bias
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.attn_v.bias
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.ffn_norm.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.ffn_gate.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.ffn_down.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.8.ffn_up.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_norm.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_q.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_k.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_v.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_output.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_q.bias
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_k.bias
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.attn_v.bias
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.ffn_norm.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.ffn_gate.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.ffn_down.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.9.ffn_up.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_norm.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_q.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_k.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_v.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_output.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_q.bias
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_k.bias
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.attn_v.bias
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.ffn_norm.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.ffn_gate.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.ffn_down.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.10.ffn_up.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_norm.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_q.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_k.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_v.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_output.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_q.bias
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_k.bias
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.attn_v.bias
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.ffn_norm.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.ffn_gate.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.ffn_down.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.11.ffn_up.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_norm.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_q.weight
+04-09 00:36:43.123 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_k.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_v.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_output.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_q.bias
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_k.bias
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.attn_v.bias
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.ffn_norm.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.ffn_gate.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.ffn_down.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.12.ffn_up.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_norm.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_q.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_k.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_v.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_output.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_q.bias
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_k.bias
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.attn_v.bias
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.ffn_norm.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.ffn_gate.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.ffn_down.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.13.ffn_up.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_norm.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_q.weight
+04-09 00:36:43.124 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_k.weight
+04-09 00:36:43.128 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_v.weight
+04-09 00:36:43.128 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_output.weight
+04-09 00:36:43.128 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_q.bias
+04-09 00:36:43.128 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_k.bias
+04-09 00:36:43.128 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.attn_v.bias
+04-09 00:36:43.128 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.ffn_norm.weight
+04-09 00:36:43.128 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.ffn_gate.weight
+04-09 00:36:43.128 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.ffn_down.weight
+04-09 00:36:43.128 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.14.ffn_up.weight
+04-09 00:36:43.128 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_norm.weight
+04-09 00:36:43.128 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_q.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_k.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_v.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_output.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_q.bias
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_k.bias
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.attn_v.bias
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.ffn_norm.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.ffn_gate.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.ffn_down.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.15.ffn_up.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_norm.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_q.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_k.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_v.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_output.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_q.bias
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_k.bias
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.attn_v.bias
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.ffn_norm.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.ffn_gate.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.ffn_down.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.16.ffn_up.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_norm.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_q.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_k.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_v.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_output.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_q.bias
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_k.bias
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.attn_v.bias
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.ffn_norm.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.ffn_gate.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.ffn_down.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.17.ffn_up.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_norm.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_q.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_k.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_v.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_output.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_q.bias
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_k.bias
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.attn_v.bias
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.ffn_norm.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.ffn_gate.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.ffn_down.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.18.ffn_up.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_norm.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_q.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_k.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_v.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_output.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_q.bias
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_k.bias
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.attn_v.bias
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.ffn_norm.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.ffn_gate.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.ffn_down.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.19.ffn_up.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_norm.weight
+04-09 00:36:43.130 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_q.weight
+04-09 00:36:43.131 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_k.weight
+04-09 00:36:43.131 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_v.weight
+04-09 00:36:43.131 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_output.weight
+04-09 00:36:43.131 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_q.bias
+04-09 00:36:43.131 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_k.bias
+04-09 00:36:43.131 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.attn_v.bias
+04-09 00:36:43.131 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.ffn_norm.weight
+04-09 00:36:43.131 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.ffn_gate.weight
+04-09 00:36:43.131 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.ffn_down.weight
+04-09 00:36:43.131 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.20.ffn_up.weight
+04-09 00:36:43.131 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_norm.weight
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_q.weight
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_k.weight
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_v.weight
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_output.weight
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_q.bias
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_k.bias
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.attn_v.bias
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.ffn_norm.weight
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.ffn_gate.weight
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.ffn_down.weight
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.21.ffn_up.weight
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_norm.weight
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_q.weight
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_k.weight
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_v.weight
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_output.weight
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_q.bias
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_k.bias
+04-09 00:36:43.132 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.attn_v.bias
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.ffn_norm.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.ffn_gate.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.ffn_down.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.22.ffn_up.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_norm.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_q.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_k.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_v.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_output.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_q.bias
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_k.bias
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.attn_v.bias
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.ffn_norm.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.ffn_gate.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.ffn_down.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.23.ffn_up.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_norm.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_q.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_k.weight
+04-09 00:36:43.133 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_v.weight
+04-09 00:36:43.134 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_output.weight
+04-09 00:36:43.134 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_q.bias
+04-09 00:36:43.134 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_k.bias
+04-09 00:36:43.134 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.attn_v.bias
+04-09 00:36:43.134 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.ffn_norm.weight
+04-09 00:36:43.134 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.ffn_gate.weight
+04-09 00:36:43.134 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.ffn_down.weight
+04-09 00:36:43.134 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.24.ffn_up.weight
+04-09 00:36:43.134 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_norm.weight
+04-09 00:36:43.134 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_q.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_k.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_v.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_output.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_q.bias
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_k.bias
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.attn_v.bias
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.ffn_norm.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.ffn_gate.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.ffn_down.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.25.ffn_up.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_norm.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_q.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_k.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_v.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_output.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_q.bias
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_k.bias
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.attn_v.bias
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.ffn_norm.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.ffn_gate.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.ffn_down.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.26.ffn_up.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_norm.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_q.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_k.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_v.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_output.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_q.bias
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_k.bias
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.attn_v.bias
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.ffn_norm.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.ffn_gate.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.ffn_down.weight
+04-09 00:36:43.135 30435 30517 I LlamaJNI: [llama] create_tensor: loading tensor blk.27.ffn_up.weight
+04-09 00:36:43.142 30435 30517 I LlamaJNI: [llama] done_getting_tensors: tensor 'token_embd.weight' (q4_K) (and 133 others) cannot be used with preferred buffer type Vulkan_Host, using CPU instead
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] load_tensors: offloading output layer to GPU
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] load_tensors: offloading 17 repeating layers to GPU
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] load_tensors: offloaded 18/29 layers to GPU
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] load_tensors:   CPU_Mapped model buffer size =  4458.57 MiB
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] load_tensors:      Vulkan0 model buffer size =  2263.65 MiB
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.727 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.728 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:53.953 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:54.040 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:54.108 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:54.226 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:54.289 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:54.381 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:54.491 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:54.652 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:54.689 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:54.936 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:55.057 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:55.165 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:55.335 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:55.380 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:55.584 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:55.668 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:55.788 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:55.911 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:56.005 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:56.140 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:56.250 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:56.347 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:56.500 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:56.597 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:56.686 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:56.832 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:56.961 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:57.058 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:57.207 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:57.314 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:57.430 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:57.593 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:57.694 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:57.818 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:57.991 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:58.165 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:58.276 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:58.449 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:58.599 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:58.707 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:58.849 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:58.964 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:59.053 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:59.195 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:59.318 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:59.396 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:59.427 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:59.633 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:59.721 30435 30517 I LlamaJNI: [llama] .
+04-09 00:36:59.722 30435 30517 I LlamaJNI: [llama]
+04-09 00:36:59.753 30435 30517 I LlamaJNI: [llama] llama_context: constructing llama_context
+04-09 00:36:59.753 30435 30517 I LlamaJNI: [llama] llama_context: n_seq_max     = 1
+04-09 00:36:59.753 30435 30517 I LlamaJNI: [llama] llama_context: n_ctx         = 2048
+04-09 00:36:59.753 30435 30517 I LlamaJNI: [llama] llama_context: n_ctx_seq     = 2048
+04-09 00:36:59.753 30435 30517 I LlamaJNI: [llama] llama_context: n_batch       = 2048
+04-09 00:36:59.753 30435 30517 I LlamaJNI: [llama] llama_context: n_ubatch      = 512
+04-09 00:36:59.753 30435 30517 I LlamaJNI: [llama] llama_context: causal_attn   = 1
+04-09 00:36:59.753 30435 30517 I LlamaJNI: [llama] llama_context: flash_attn    = auto
+04-09 00:36:59.753 30435 30517 I LlamaJNI: [llama] llama_context: kv_unified    = false
+04-09 00:36:59.753 30435 30517 I LlamaJNI: [llama] llama_context: freq_base     = 1000000.0
+04-09 00:36:59.753 30435 30517 I LlamaJNI: [llama] llama_context: freq_scale    = 1
+04-09 00:36:59.753 30435 30517 I LlamaJNI: [llama] llama_context: n_ctx_seq (2048) < n_ctx_train (32768) -- the full capacity of the model will not be utilized
+04-09 00:36:59.760 30435 30517 I LlamaJNI: [llama] set_abort_callback: call
+04-09 00:36:59.762 30435 30517 I LlamaJNI: [llama] llama_context: Vulkan_Host  output buffer size =     0.58 MiB
+04-09 00:36:59.763 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer   0: dev = CPU
+04-09 00:36:59.764 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer   1: dev = CPU
+04-09 00:36:59.764 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer   2: dev = CPU
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer   3: dev = CPU
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer   4: dev = CPU
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer   5: dev = CPU
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer   6: dev = CPU
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer   7: dev = CPU
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer   8: dev = CPU
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer   9: dev = CPU
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  10: dev = CPU
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  11: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  12: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  13: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  14: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  15: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  16: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  17: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  18: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  19: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  20: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  21: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  22: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  23: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  24: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  25: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  26: dev = Vulkan0
+04-09 00:36:59.765 30435 30517 I LlamaJNI: [llama] llama_kv_cache: layer  27: dev = Vulkan0
+04-09 00:36:59.766 30435 30517 I LlamaJNI: [llama] llama_kv_cache:        CPU KV buffer size =    44.00 MiB
+04-09 00:36:59.867 30435 30517 I LlamaJNI: [llama] llama_kv_cache:    Vulkan0 KV buffer size =    68.00 MiB
+04-09 00:36:59.877 30435 30517 I LlamaJNI: [llama] llama_kv_cache: size =  112.00 MiB (  2048 cells,  28 layers,  1/1 seqs), K (f16):   56.00 MiB, V (f16):   56.00 MiB
+04-09 00:36:59.877 30435 30517 I LlamaJNI: [llama] llama_context: enumerating backends
+04-09 00:36:59.877 30435 30517 I LlamaJNI: [llama] llama_context: backend_ptrs.size() = 2
+04-09 00:36:59.877 30435 30517 I LlamaJNI: [llama] sched_reserve: reserving ...
+04-09 00:36:59.877 30435 30517 I LlamaJNI: [llama] sched_reserve: max_nodes = 2712
+04-09 00:36:59.878 30435 30517 I LlamaJNI: [llama] sched_reserve: reserving full memory module
+04-09 00:36:59.879 30435 30517 I LlamaJNI: [llama] sched_reserve: worst-case: n_tokens = 512, n_seqs = 1, n_outputs = 1
+04-09 00:36:59.879 30435 30517 I LlamaJNI: [llama] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+04-09 00:36:59.881 30435 30517 I LlamaJNI: [llama] sched_reserve: Flash Attention was auto, set to enabled
+04-09 00:36:59.882 30435 30517 I LlamaJNI: [llama] sched_reserve: resolving fused Gated Delta Net support:
+04-09 00:36:59.882 30435 30517 I LlamaJNI: [llama] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+04-09 00:36:59.883 30435 30517 I LlamaJNI: [llama] sched_reserve: fused Gated Delta Net (autoregressive) enabled
+04-09 00:36:59.883 30435 30517 I LlamaJNI: [llama] graph_reserve: reserving a graph for ubatch with n_tokens =   16, n_seqs =  1, n_outputs =   16
+04-09 00:36:59.883 30435 30517 I LlamaJNI: [llama] sched_reserve: fused Gated Delta Net (chunked) enabled
+04-09 00:36:59.883 30435 30517 I LlamaJNI: [llama] graph_reserve: reserving a graph for ubatch with n_tokens =  512, n_seqs =  1, n_outputs =  512
+04-09 00:37:00.400 30435 30517 I LlamaJNI: [llama] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+04-09 00:37:00.401 30435 30517 I LlamaJNI: [llama] graph_reserve: reserving a graph for ubatch with n_tokens =  512, n_seqs =  1, n_outputs =  512
+04-09 00:37:00.402 30435 30517 I LlamaJNI: [llama] sched_reserve:    Vulkan0 compute buffer size =   179.44 MiB
+04-09 00:37:00.402 30435 30517 I LlamaJNI: [llama] sched_reserve: Vulkan_Host compute buffer size =   310.22 MiB
+04-09 00:37:00.402 30435 30517 I LlamaJNI: [llama] sched_reserve: graph nodes  = 959
+04-09 00:37:00.402 30435 30517 I LlamaJNI: [llama] sched_reserve: graph splits = 157 (with bs=512), 3 (with bs=1)
+04-09 00:37:00.402 30435 30517 I LlamaJNI: [llama] sched_reserve: reserve took 525.15 ms, sched copies = 1
+04-09 00:38:23.674 30435 30517 I LlamaJNI: ✅ Model ready | n_vocab=151666 ctx=2048 threads=5/5
+04-09 00:38:23.686 30435 30517 D MiniCPMVLM: ✅ MiniCPM-V 2.6 ready in 101352ms (threads=5 batch=5 ctx=2048)

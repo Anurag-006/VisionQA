@@ -8,7 +8,28 @@ object LlamaJNI {
             System.loadLibrary("omp")
             System.loadLibrary("ggml-base")
             System.loadLibrary("ggml-cpu")
-//            System.loadLibrary("ggml-vulkan")
+
+            // Only load Vulkan on Adreno 7xx (Snapdragon 8 Gen 1+)
+            // Adreno 613 (Redmi 13 5G) does not support fp16 and will reject the model
+            val renderer = try {
+                val egl = android.opengl.EGL14.eglGetDisplay(android.opengl.EGL14.EGL_DEFAULT_DISPLAY)
+                android.opengl.EGL14.eglInitialize(egl, null, 0, null, 0)
+                android.os.Build.HARDWARE  // fallback identifier
+            } catch (e: Exception) { "" }
+
+            val board = android.os.Build.BOARD.lowercase()
+            val hardware = android.os.Build.HARDWARE.lowercase()
+            val isCapableGPU = board.contains("kalama") ||   // Snapdragon 8 Gen 2 (iQOO Neo 9 Pro)
+                    board.contains("crow") ||      // Snapdragon 8 Gen 3
+                    hardware.contains("kalama")
+
+//            if (isCapableGPU) {
+//                System.loadLibrary("ggml-vulkan")
+//                Log.d("LlamaJNI", "✅ Vulkan enabled for $board")
+//            } else {
+//                Log.d("LlamaJNI", "⚠️ Vulkan skipped — unsupported GPU ($board)")
+//            }
+
             System.loadLibrary("ggml")
             System.loadLibrary("llama")
             System.loadLibrary("mtmd")
@@ -16,11 +37,8 @@ object LlamaJNI {
             Log.d("LlamaJNI", "✅ All native libraries loaded.")
         } catch (e: UnsatisfiedLinkError) {
             Log.e("LlamaJNI", "❌ LIBRARY LOAD FAILED: ${e.message}")
-        } catch (e: Exception) {
-            Log.e("LlamaJNI", "❌ Unexpected error: ${e.message}", e)
         }
     }
-
     /**
      * Loads the language model and multimodal projector.
      *

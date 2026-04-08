@@ -32,8 +32,16 @@ class MiniCPMVLM(private val context: Context) : VLMInterface {
         //
         // Use prime + perf cores only (5 total).
         // Efficiency cores hurt inference speed due to cache thrashing.
-        private const val N_THREADS       = 5
-        private const val N_THREADS_BATCH = 5  // all big cores for prefill/image encoding
+        private val N_THREADS: Int get() {
+            val cores = Runtime.getRuntime().availableProcessors()
+            return when {
+                cores >= 8 -> 5   // iQOO Neo / flagship: use 5 big cores
+                cores >= 6 -> 4   // mid-range: use 4
+                else -> 3
+            }
+        }
+
+        private val N_THREADS_BATCH: Int get() = N_THREADS
 
         // 8192 tokens: ~1024 image tokens + system prompt + plenty of
         // multi-turn headroom. Safe on Neo 9 Pro (12–16 GB RAM).
@@ -41,10 +49,10 @@ class MiniCPMVLM(private val context: Context) : VLMInterface {
 
         // 768 tokens ≈ 3–5 paragraphs. Model stops naturally via EOS if shorter.
         // Raised from 512 to allow fuller, untruncated answers.
-        private const val MAX_TOKENS   = 768
+        private const val MAX_TOKENS   = 400
 
         // MiniCPM-V 2.6 native resolution. Do not reduce — loses visual detail.
-        private const val MAX_IMAGE_DIM = 448
+        private const val MAX_IMAGE_DIM = 336
     }
 
     override suspend fun initialize(): Boolean = initialize { _, _ -> }
